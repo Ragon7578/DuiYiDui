@@ -24,9 +24,27 @@ git checkout -b fix/你的修复名
 
 ### 3. 开发
 
-- 前端代码在 `code/frontend/` 下
-- 启动：`npm run dev`（在 `code/frontend/` 目录下）
-- 确保 build 通过：`npm run build`
+**前端**（`apps/web/`）：
+
+```bash
+cd apps/web
+npm install
+npm run dev          # http://localhost:3000
+npm run build        # 确保 build 通过
+npm run lint         # ESLint 检查
+```
+
+**后端**（`apps/api/`）：
+
+```bash
+cd apps/api
+npm install
+npm run seed         # 初始化数据库
+npm run dev          # http://localhost:4000
+npm run build        # 确保编译通过
+```
+
+完整开发指南见 [development.md](development.md)。
 
 ### 4. 提交 PR
 
@@ -144,8 +162,15 @@ src/components/
 放在 `src/lib/` 下，按职责拆分文件：
 - `types.ts` — 类型定义
 - `utils.ts` — 通用函数
-- `api.ts` — 后续 API 调用
+- `api.ts` — API 调用封装（待实现）
 - `constants.ts` — 常量
+
+### 添加新 API 端点
+
+1. 在 `apps/api/src/types.ts` 添加类型
+2. 在 `apps/api/src/routes/` 添加路由
+3. 更新 [api.md](api.md)
+4. 在前端 `src/lib/api.ts` 添加调用函数
 
 ---
 
@@ -188,9 +213,9 @@ Closes #(issue 号)
 
 | 优先级 | 任务 | 说明 |
 |--------|------|------|
-| P0 | 用户认证 | 接入 NextAuth，实现注册/登录 |
-| P0 | 后端 API | 建立 REST API，替换 mock 数据 |
-| P1 | 签署流程 | 契约签署交互，参与方确认 |
-| P1 | 通知系统 | 到期提醒、签署邀请 |
+| P0 | 前后端联调 | ~~前端替换 mock-data，调用 REST API~~ ✅ |
+| P0 | 用户认证 | ~~JWT 登录/注册~~ ✅ |
+| P1 | 创建表单提交 | `/create` 页面提交到 API |
+| P1 | 通知系统 | 到期提醒、目标进度 |
 | P2 | 移动端适配 | 响应式优化，移动端导航 |
 | P2 | 测试覆盖 | 单元测试 + E2E 测试 |

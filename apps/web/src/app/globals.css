@@ -1,0 +1,191 @@
+@import "tailwindcss";
+
+:root {
+  --ink: #0c0f14;
+  --ink-soft: #1a1f2a;
+  --paper: #f3f5f8;
+  --paper-deep: #e6eaef;
+  --seal: #c81e1e;
+  --seal-soft: #fde8e8;
+  --line: #c8d0db;
+  --muted: #5c6678;
+  --ok: #1a7a4c;
+  --ok-soft: #e3f5eb;
+  --warn: #9a6b00;
+  --warn-soft: #fff3d6;
+  --info: #1e4f8c;
+  --info-soft: #e4eef9;
+}
+
+@theme inline {
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-paper: var(--paper);
+  --color-paper-deep: var(--paper-deep);
+  --color-seal: var(--seal);
+  --color-seal-soft: var(--seal-soft);
+  --color-line: var(--line);
+  --color-muted: var(--muted);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-body), "Outfit", system-ui, sans-serif;
+  color: var(--ink);
+  background-color: var(--paper);
+  background-image:
+    radial-gradient(ellipse 120% 80% at 10% -20%, rgba(200, 30, 30, 0.08), transparent 50%),
+    radial-gradient(ellipse 90% 60% at 100% 0%, rgba(30, 79, 140, 0.1), transparent 45%),
+    linear-gradient(180deg, #f7f8fb 0%, var(--paper) 40%, #eef1f5 100%);
+  background-attachment: fixed;
+}
+
+body::before {
+  content: "";
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  z-index: 0;
+}
+
+.font-display {
+  font-family: var(--font-display), "Noto Serif SC", "Songti SC", serif;
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ink-sweep {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 1.4s ease-in-out infinite;
+}
+
+.animate-rise {
+  animation: rise-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.animate-rise-delay-1 {
+  animation: rise-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) 0.08s forwards;
+}
+
+.animate-rise-delay-2 {
+  animation: rise-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) 0.16s forwards;
+}
+
+.animate-rise-delay-3 {
+  animation: rise-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) 0.24s forwards;
+}
+
+.ink-underline {
+  position: relative;
+  display: inline-block;
+}
+
+.ink-underline::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 100%;
+  height: 3px;
+  background: var(--seal);
+  transform-origin: left;
+  animation: ink-sweep 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.35s forwards;
+}
+
+.progress-fill {
+  transform-origin: left;
+  animation: ink-sweep 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.panel {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(12px);
+  border-radius: 4px;
+}
+
+.panel-interactive {
+  transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.panel-interactive:hover {
+  transform: translateY(-2px);
+  border-color: var(--ink);
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.btn-primary {
+  background: var(--ink);
+  color: white;
+  border-radius: 4px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--ink-soft);
+  transform: translateY(-1px);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+}
+
+.input-field {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 4px;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.875rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.input-field:focus {
+  outline: none;
+  border-color: var(--ink);
+  box-shadow: 0 0 0 3px rgba(12, 15, 20, 0.08);
+}

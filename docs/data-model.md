@@ -162,3 +162,94 @@ Party       (N) ────> (1) UserProfile (参与方对应一个用户)
 | Contract | P1 | 多人协作场景 |
 | Pledge | P2 | 轻量承诺，可被 Goal 覆盖 |
 | UserProfile | P0 | 用户系统 |
+
+---
+
+## 十、数据库 Schema（SQLite）
+
+后端使用 SQLite 持久化，表结构与上述实体模型对应。数据库文件位于 `apps/api/data/contract-spirit.db`。
+
+### users
+
+| 列 | 类型 | 约束 | 说明 |
+|----|------|------|------|
+| `id` | TEXT | PK | 用户 ID |
+| `name` | TEXT | NOT NULL | 用户名 |
+| `avatar` | TEXT | | 头像 URL |
+| `trust_score` | INTEGER | DEFAULT 50 | 信任分 |
+| `total_goals` | INTEGER | DEFAULT 0 | 总目标数 |
+| `achieved_goals` | INTEGER | DEFAULT 0 | 已达成 |
+| `abandoned_goals` | INTEGER | DEFAULT 0 | 已放弃 |
+| `total_contracts` | INTEGER | DEFAULT 0 | 总契约数 |
+| `fulfilled_contracts` | INTEGER | DEFAULT 0 | 已履行 |
+| `breached_contracts` | INTEGER | DEFAULT 0 | 已违约 |
+| `bio` | TEXT | DEFAULT '' | 简介 |
+
+### goals
+
+| 列 | 类型 | 约束 | 说明 |
+|----|------|------|------|
+| `id` | TEXT | PK | 目标 ID |
+| `title` | TEXT | NOT NULL | 标题 |
+| `description` | TEXT | | 描述 |
+| `reward` | TEXT | NOT NULL | 奖励 |
+| `reward_claimed` | INTEGER | DEFAULT 0 | 0/1 布尔 |
+| `deadline` | TEXT | | 截止日期 |
+| `status` | TEXT | CHECK | active/achieved/reward_claimed/abandoned |
+| `progress` | INTEGER | 0-100 | 进度 |
+| `created_at` | TEXT | DEFAULT now | 创建时间 |
+| `achieved_at` | TEXT | | 达成时间 |
+| `user_id` | TEXT | FK → users | 所属用户 |
+
+### contracts
+
+| 列 | 类型 | 约束 | 说明 |
+|----|------|------|------|
+| `id` | TEXT | PK | 契约 ID |
+| `title` | TEXT | NOT NULL | 标题 |
+| `description` | TEXT | DEFAULT '' | 描述 |
+| `status` | TEXT | CHECK | draft/active/completed/breached/cancelled |
+| `reward` | TEXT | | 奖励 |
+| `created_at` | TEXT | DEFAULT now | 创建时间 |
+| `updated_at` | TEXT | DEFAULT now | 更新时间 |
+| `signed_at` | TEXT | | 签署时间 |
+
+### parties
+
+| 列 | 类型 | 约束 | 说明 |
+|----|------|------|------|
+| `id` | TEXT | PK (复合) | 用户 ID |
+| `contract_id` | TEXT | PK (复合), FK → contracts | 契约 ID |
+| `name` | TEXT | NOT NULL | 显示名 |
+| `role` | TEXT | CHECK | promisor/promisee/both |
+| `signed_at` | TEXT | | 签署时间 |
+
+删除契约时级联删除参与方（`ON DELETE CASCADE`）。
+
+### clauses
+
+| 列 | 类型 | 约束 | 说明 |
+|----|------|------|------|
+| `id` | TEXT | PK | 条款 ID |
+| `contract_id` | TEXT | FK → contracts | 契约 ID |
+| `content` | TEXT | NOT NULL | 内容 |
+| `status` | TEXT | CHECK | pending/fulfilled/breached |
+| `due_date` | TEXT | | 截止日期 |
+
+### pledges
+
+| 列 | 类型 | 约束 | 说明 |
+|----|------|------|------|
+| `id` | TEXT | PK | 承诺 ID |
+| `title` | TEXT | NOT NULL | 标题 |
+| `description` | TEXT | DEFAULT '' | 描述 |
+| `maker` | TEXT | NOT NULL | 承诺人 |
+| `deadline` | TEXT | | 截止日期 |
+| `status` | TEXT | CHECK | active/fulfilled/broken |
+| `created_at` | TEXT | DEFAULT now | 创建时间 |
+
+### 命名约定
+
+- API 响应使用 camelCase（`trustScore`、`createdAt`）
+- 数据库列使用 snake_case（`trust_score`、`created_at`）
+- 路由 handler 中通过 `rowToXxx()` 函数完成转换

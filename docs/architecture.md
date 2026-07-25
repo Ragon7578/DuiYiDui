@@ -21,26 +21,28 @@
 └────────────────────┬─────────────────────────────┘
                      │ API 请求（后续）
 ┌────────────────────▼─────────────────────────────┐
-│                  后端层（待开发）                    │
-│            REST API / GraphQL                     │
+│                  后端层                            │
+│         Express 4 + TypeScript (:4000)            │
+│   /api/goals  /api/contracts  /api/pledges        │
 └────────────────────┬─────────────────────────────┘
                      │
 ┌────────────────────▼─────────────────────────────┐
-│                  数据层（待开发）                    │
-│         PostgreSQL / SQLite / 其他                 │
+│                  数据层                            │
+│         SQLite (node:sqlite)                       │
 └──────────────────────────────────────────────────┘
 ```
 
-### 当前架构（原型阶段）
+### 当前架构（开发阶段）
 
 ```
-用户 → Next.js (SSR/SSG) → mock-data.ts（内存数据）
+用户 → Next.js (:3000) → mock-data.ts（内存数据，待替换）
+后端 API (:4000) → SQLite（已实现，待联调）
 ```
 
 ### 目标架构
 
 ```
-用户 → Next.js (SSR) → 后端 API → 数据库
+用户 → Next.js (:3000) → Express API (:4000) → SQLite
 ```
 
 ---
@@ -152,10 +154,46 @@ UserProfile { id, name, trustScore, totalContracts, fulfilledContracts, breached
 
 | 方面 | 当前 | 未来 |
 |------|------|------|
-| 数据 | 硬编码 mock 数据 | API 获取 + 数据库 |
+| 数据 | 前端 mock 数据 + 后端 SQLite API | 前后端联调 |
 | 状态管理 | 无（仅组件内 useState） | React Context / Zustand |
-| 认证 | 无 | NextAuth.js / Clerk |
+| 认证 | 无（硬编码用户 u1） | NextAuth.js / JWT |
 | 表单 | 基础受控组件 | React Hook Form + Zod |
 | 测试 | 无 | Vitest + Testing Library |
 | 错误处理 | 基本 404 | 全局 ErrorBoundary |
 | 加载状态 | 无 | loading.tsx + Suspense |
+
+---
+
+## 三、后端技术细节
+
+后端已实现 Express REST API，详见 [backend.md](backend.md) 和 [api.md](api.md)。
+
+### 3.1 路由结构
+
+```
+/api/health              GET     健康检查
+/api/goals               GET     目标列表
+/api/goals/:id           GET     目标详情
+/api/goals               POST    创建目标
+/api/goals/:id           PATCH   更新目标
+/api/goals/:id           DELETE  删除目标
+/api/contracts           GET     契约列表
+/api/contracts/:id       GET     契约详情
+/api/contracts           POST    创建契约
+/api/contracts/:id       PATCH   更新契约
+/api/contracts/:id/clauses/:clauseId  PATCH  更新条款
+/api/pledges             GET/POST/PATCH/DELETE  承诺 CRUD
+/api/profile             GET/PATCH  用户资料
+/api/profile/stats       GET     聚合统计
+```
+
+### 3.2 信任分联动
+
+后端在以下事件时自动更新用户信任分：
+
+| 事件 | 变化 |
+|------|------|
+| 目标达成 | +5 |
+| 目标放弃 | -5 |
+| 契约完成 | +10 |
+| 契约违约 | -15 |

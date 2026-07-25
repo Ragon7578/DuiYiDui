@@ -1,0 +1,16 @@
+{
+  "name": "contract-spirit",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev:api & npm run dev:web",
+    "dev:web": "npm run dev -w @contract-spirit/web",
+    "dev:api": "npm run dev -w @contract-spirit/api",
+    "build": "npm run build -w @contract-spirit/api && npm run build -w @contract-spirit/web",
+    "seed": "npm run seed -w @contract-spirit/api",
+    "lint": "npm run lint -w @contract-spirit/web"
+  }
+}
