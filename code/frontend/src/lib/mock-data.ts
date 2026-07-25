@@ -1,14 +1,65 @@
-import type { Contract, Pledge, UserProfile } from "./types"
+import type { Goal, Contract, Pledge, UserProfile } from "./types"
 
 export const mockProfile: UserProfile = {
   id: "u1",
   name: "张三",
-  trustScore: 92,
+  trustScore: 78,
+  totalGoals: 8,
+  achievedGoals: 5,
+  abandonedGoals: 2,
   totalContracts: 24,
   fulfilledContracts: 20,
   breachedContracts: 1,
-  bio: "相信契约精神，守信如金。",
+  bio: "说到做到，对自己诚实。",
 }
+
+export const mockGoals: Goal[] = [
+  {
+    id: "g1",
+    title: "连续跑步 30 天",
+    description: "每天至少跑 3 公里，不限配速",
+    reward: "买一双 Nike Air Zoom 跑鞋",
+    rewardClaimed: false,
+    deadline: "2026-08-15",
+    status: "active",
+    progress: 60,
+    createdAt: "2026-07-01",
+  },
+  {
+    id: "g2",
+    title: "读完《人类简史》",
+    description: "一个月内读完并写一篇读书笔记",
+    reward: "奖励自己去一趟云南旅行",
+    rewardClaimed: false,
+    deadline: "2026-07-30",
+    status: "active",
+    progress: 40,
+    createdAt: "2026-07-05",
+  },
+  {
+    id: "g3",
+    title: "瘦到 65 公斤",
+    description: "从 72 公斤减到 65 公斤，控制饮食 + 运动",
+    reward: "买一套新西装",
+    rewardClaimed: true,
+    deadline: "2026-06-01",
+    status: "achieved",
+    progress: 100,
+    createdAt: "2026-03-01",
+    achievedAt: "2026-05-28",
+  },
+  {
+    id: "g4",
+    title: "每天背 20 个英语单词",
+    description: "坚持 60 天，为年底的旅行做准备",
+    reward: "",
+    rewardClaimed: false,
+    deadline: "2026-04-01",
+    status: "abandoned",
+    progress: 30,
+    createdAt: "2026-02-01",
+  },
+]
 
 export const mockContracts: Contract[] = [
   {
@@ -25,6 +76,7 @@ export const mockContracts: Contract[] = [
       { id: "cl3", content: "双方共同拥有项目知识产权", status: "fulfilled" },
     ],
     status: "active",
+    reward: "项目上线后一起庆祝",
     createdAt: "2026-06-01",
     updatedAt: "2026-06-15",
   },

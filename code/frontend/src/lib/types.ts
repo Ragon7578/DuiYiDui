@@ -1,3 +1,18 @@
+export type GoalStatus = "active" | "achieved" | "reward_claimed" | "abandoned"
+
+export interface Goal {
+  id: string
+  title: string
+  description?: string
+  reward: string
+  rewardClaimed: boolean
+  deadline?: string
+  status: GoalStatus
+  progress: number
+  createdAt: string
+  achievedAt?: string
+}
+
 export type ContractStatus = "draft" | "active" | "completed" | "breached" | "cancelled"
 
 export interface Party {
@@ -21,6 +36,7 @@ export interface Contract {
   parties: Party[]
   clauses: Clause[]
   status: ContractStatus
+  reward?: string
   createdAt: string
   updatedAt: string
   signedAt?: string
@@ -41,6 +57,9 @@ export interface UserProfile {
   name: string
   avatar?: string
   trustScore: number
+  totalGoals: number
+  achievedGoals: number
+  abandonedGoals: number
   totalContracts: number
   fulfilledContracts: number
   breachedContracts: number

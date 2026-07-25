@@ -5,8 +5,8 @@ import { usePathname } from "next/navigation"
 
 const links = [
   { href: "/", label: "首页" },
+  { href: "/goals", label: "目标" },
   { href: "/contracts", label: "契约" },
-  { href: "/pledges", label: "承诺" },
   { href: "/create", label: "创建" },
   { href: "/profile", label: "我的" },
 ]
@@ -26,7 +26,7 @@ export function Navbar() {
               key={link.href}
               href={link.href}
               className={
-                pathname === link.href
+                pathname === link.href || pathname.startsWith(link.href + "/")
                   ? "font-medium text-black"
                   : "text-gray-500 transition hover:text-black"
               }
