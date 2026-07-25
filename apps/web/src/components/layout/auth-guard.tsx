@@ -18,7 +18,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     return (
       <div className="animate-rise flex min-h-[50vh] flex-col items-center justify-center gap-6 text-center">
         <div>
-          <p className="font-display text-4xl font-black text-ink">契约精神</p>
+          <p className="font-display text-4xl font-black text-ink">兑一兑</p>
           <p className="mt-3 text-muted">请先登录以查看此页面</p>
         </div>
         <div className="flex gap-3">

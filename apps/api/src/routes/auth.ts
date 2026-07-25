@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs"
 import { v4 as uuid } from "uuid"
 import { getDb } from "../db/schema.js"
 import { requireAuth, signToken } from "../middleware/auth.js"
+import { rateLimit } from "../middleware/rate-limit.js"
 import type { UserProfile } from "../types.js"
 
 const router = Router()
@@ -41,7 +42,10 @@ function getProfile(userId: string): UserProfile | null {
 }
 
 /** 注册：仅用户名 + 密码，个人资料登录后补充 */
-router.post("/register", (req, res) => {
+router.post(
+  "/register",
+  rateLimit({ windowMs: 60_000, max: 10 }),
+  (req, res) => {
   const db = getDb()
   const username = normalizeUsername(req.body.username ?? req.body.name)
   const password = String(req.body.password || "")
@@ -87,7 +91,10 @@ router.post("/register", (req, res) => {
   res.status(201).json({ token, user: getProfile(id) })
 })
 
-router.post("/login", (req, res) => {
+router.post(
+  "/login",
+  rateLimit({ windowMs: 60_000, max: 20 }),
+  (req, res) => {
   const db = getDb()
   const username = normalizeUsername(req.body.username ?? req.body.name)
   const password = String(req.body.password || "")

@@ -2,7 +2,9 @@ import { DatabaseSync } from "node:sqlite"
 import path from "node:path"
 import fs from "node:fs"
 
-const DB_PATH = path.resolve(__dirname, "..", "..", "data", "contract-spirit.db")
+const DB_PATH = process.env.DB_PATH
+  ? path.resolve(process.env.DB_PATH)
+  : path.resolve(__dirname, "..", "..", "data", "contract-spirit.db")
 
 let db: DatabaseSync
 
@@ -13,6 +15,7 @@ export function getDb(): DatabaseSync {
       fs.mkdirSync(dir, { recursive: true })
     }
     db = new DatabaseSync(DB_PATH)
+    console.log(`[db] using ${DB_PATH}`)
     db.exec("PRAGMA journal_mode=WAL")
     db.exec("PRAGMA foreign_keys=ON")
     initSchema()
@@ -117,6 +120,23 @@ function initSchema() {
       confirmed_at TEXT,
       FOREIGN KEY (goal_id) REFERENCES goals(id) ON DELETE CASCADE,
       FOREIGN KEY (witness_user_id) REFERENCES users(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS feedback (
+      id TEXT PRIMARY KEY,
+      user_id TEXT,
+      contact TEXT,
+      message TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS analytics_events (
+      id TEXT PRIMARY KEY,
+      user_id TEXT,
+      event TEXT NOT NULL,
+      payload TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
   `)
 

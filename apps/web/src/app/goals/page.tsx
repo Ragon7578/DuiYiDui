@@ -12,8 +12,10 @@ import {
   addGoalWitness,
   fetchUsers,
 } from "@/lib/api-client"
+import { track } from "@/lib/analytics"
 import { formatDate } from "@/lib/utils"
 import type { Goal, GoalWitness, AuthUser } from "@/lib/types"
+import Link from "next/link"
 
 export default function GoalsPage() {
   return (
@@ -37,9 +39,20 @@ function GoalsContent() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="font-display text-3xl font-black tracking-tight">我的目标</h1>
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h1 className="font-display text-3xl font-black tracking-tight">我的目标</h1>
+          <p className="mt-1 text-sm text-muted">对自己的承诺 · 奖励要兑得了</p>
+        </div>
+        <Link href="/create" className="btn-primary px-4 py-2 text-sm">
+          创建
+        </Link>
       </div>
+      {goals.some((g) => g.status === "achieved" && !g.rewardClaimed) && (
+        <p className="rounded border border-ok/30 bg-ok-soft/50 px-4 py-2 text-sm text-ink">
+          有奖励待兑现——打开对应目标，标记「奖励已兑现」。
+        </p>
+      )}
       <div className="space-y-4">
         {goals.map((g) => (
           <GoalCard key={g.id} goal={g} onUpdate={(updated) =>
@@ -47,7 +60,15 @@ function GoalsContent() {
           } />
         ))}
         {goals.length === 0 && (
-          <p className="text-sm text-muted">还没有目标，去创建一个吧。</p>
+          <div className="rounded border border-dashed border-line px-6 py-12 text-center">
+            <p className="font-display text-lg font-bold">还没有目标</p>
+            <p className="mt-2 text-sm text-muted">
+              写下一件要对得起自己的事，并想好奖励。
+            </p>
+            <Link href="/create" className="btn-primary mt-4 inline-block px-4 py-2 text-sm">
+              创建带奖励的目标
+            </Link>
+          </div>
         )}
       </div>
     </div>
@@ -70,6 +91,9 @@ function GoalCard({ goal, onUpdate }: { goal: Goal; onUpdate: (g: Goal) => void 
     setBusy(true)
     try {
       const updated = await updateGoal(goal.id, { progress })
+      if (updated.status === "achieved" && goal.status !== "achieved") {
+        track("achieve_goal")
+      }
       onUpdate(updated)
     } finally {
       setBusy(false)
@@ -80,6 +104,7 @@ function GoalCard({ goal, onUpdate }: { goal: Goal; onUpdate: (g: Goal) => void 
     setBusy(true)
     try {
       const updated = await claimReward(goal.id)
+      track("claim_reward")
       onUpdate(updated)
     } finally {
       setBusy(false)
@@ -102,6 +127,7 @@ function GoalCard({ goal, onUpdate }: { goal: Goal; onUpdate: (g: Goal) => void 
     setBusy(true)
     try {
       const w = await addGoalWitness(goal.id, witnessId)
+      track("invite_witness")
       setWitnesses((prev) => [...prev, w])
       setWitnessId("")
     } finally {
@@ -178,7 +204,8 @@ function GoalCard({ goal, onUpdate }: { goal: Goal; onUpdate: (g: Goal) => void 
 
           {goal.status === "active" && (
             <div className="mt-4 border-t pt-4">
-              <p className="mb-2 text-sm font-medium">监督见证</p>
+              <p className="mb-2 text-sm font-medium">见证人（建议 1 人）</p>
+              <p className="mb-2 text-xs text-muted">对方确认后，你达成时对方也会获得成就点 +3</p>
               {witnesses.length > 0 && (
                 <div className="mb-2 space-y-1">
                   {witnesses.map((w) => (

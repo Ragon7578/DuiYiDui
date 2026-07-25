@@ -1,80 +1,87 @@
-# 部署说明
+# 部署说明（初版快速上线）
 
-> 仓库内**尚无**正式 Dockerfile / GitHub Actions；下文描述与**当前代码匹配**的部署注意，以及可选的后续方案。
+> 目标：尽快公网 Web 可访问并收反馈。详见 [roadmap/fast-launch.md](./roadmap/fast-launch.md)。
 
-## 一、运行时组成
+## 一、组成
 
 | 进程 | 说明 |
 |------|------|
-| `apps/api` | Node 服务，持久化 SQLite 目录 |
-| `apps/web` | Next.js（`next start` 或托管到 Node/Vercel 等） |
+| `apps/api` | Express + SQLite（可用卷持久化） |
+| `apps/web` | Next.js |
 
-Java 服务可选，不阻挡主路径。
+## 二、最快路径：Docker Compose
 
-## 二、必须配置的环境变量
+```bash
+cp .env.example .env
+# 编辑 JWT_SECRET、APP_URL、FRONTEND_ORIGIN、NEXT_PUBLIC_API_URL
+
+docker compose up -d --build
+```
+
+- Web: http://localhost:3000  
+- API 健康检查: http://localhost:4000/api/health  
+- 数据卷: `cs_data` → 容器内 `/data/contract-spirit.db`  
+
+公网时在前面加 HTTPS 反代（Caddy / Nginx / 云负载均衡），并把 `APP_URL` / `FRONTEND_ORIGIN` / `NEXT_PUBLIC_API_URL` 改成公网域名。
+
+首次需要演示数据时（**会清库，生产慎用**）：
+
+```bash
+docker compose exec api node --import tsx apps/api/src/db/seed.ts
+# 若镜像未带 tsx，可在宿主机：
+DB_PATH=... npm run seed -w @contract-spirit/api
+```
+
+更稳妥：公网空库直接注册，不必 seed。
+
+## 三、环境变量
 
 ### API
 
 | 变量 | 要求 |
 |------|------|
-| `JWT_SECRET` | **生产强随机，禁止用开发默认值** |
-| `APP_URL` | 前端公网源，如 `https://app.example.com`（重置密码链接） |
-| `PORT` | 按托管平台 |
+| `JWT_SECRET` | **生产必填强随机** |
+| `APP_URL` | 前端公网源（重置密码链接） |
+| `FRONTEND_ORIGIN` | CORS 允许的前端源 |
+| `PORT` | 默认 4000 |
+| `DB_PATH` | SQLite 文件路径 |
 | `OPENAI_API_KEY` | 可选 |
 
 ### Web
 
 | 变量 | 要求 |
 |------|------|
-| `NEXT_PUBLIC_API_URL` | 浏览器可访问的 API 根 URL |
+| `NEXT_PUBLIC_API_URL` | 浏览器可访问的 API 根 URL（**构建时写入**） |
 
-**未使用：** NextAuth（`NEXTAUTH_*`）、`DATABASE_URL`（当前非 Postgres）。
-
-## 三、数据持久化
-
-- 默认文件：`apps/api/data/contract-spirit.db`  
-- 容器 / 多实例部署时需挂卷或改为集中式数据库（需改代码）  
-- 备份：定期拷贝 db 文件（注意 WAL 模式下的 `-wal`/`-shm`）  
-
-## 四、推荐启动顺序
+## 四、不用 Docker 时
 
 ```bash
 npm install
-# 生产构建
 npm run build
-# API
-NODE_ENV=production JWT_SECRET=... APP_URL=... npm run start -w @contract-spirit/api
-# Web（另进程或平台）
+NODE_ENV=production JWT_SECRET=... APP_URL=... FRONTEND_ORIGIN=... \
+  npm run start -w @contract-spirit/api
 NEXT_PUBLIC_API_URL=https://api.example.com npm run start -w @contract-spirit/web
 ```
 
-首次或空库可执行 `npm run seed`（**会清数据**，生产慎用）。
+## 五、上线前检查（反馈上线）
 
-## 五、安全清单
-
-- [ ] 更换 `JWT_SECRET`  
-- [ ] CORS 限制为前端域名（改 `apps/api` 入口配置）  
 - [ ] HTTPS  
-- [ ] 不要暴露 SQLite 目录  
-- [ ] 正式发信前，去掉 forgot-password 响应中的 `resetUrl` 或仅日志  
-- [ ] 限流（登录 / 重置密码）— 待增强  
+- [ ] 更换 `JWT_SECRET`  
+- [ ] CORS / `FRONTEND_ORIGIN`  
+- [ ] 数据目录持久化与备份意识  
+- [ ] `/feedback` 可提交；隐私/用户协议可打开  
+- [ ] 注册 → 创建带奖励目标 → 达成 → 兑奖 冒烟通过  
+- [ ] `GET /api/health` 正常  
 
-## 六、密码重置（试验 → 正式）
+## 六、密码重置
 
 | 阶段 | 行为 |
 |------|------|
-| 当前 | API 返回 `resetUrl` + `console.log` |
-| 正式 | 接入邮件服务，响应仅通用成功文案 |
+| 当前 | API 可能返回 `resetUrl` + 服务端日志（试验） |
+| 正式 | 接入邮件服务后去掉响应中的明文链接 |
 
-## 七、后续可选项（未实现）
-
-- Docker Compose（api + web + volume）  
-- CI：lint + build  
-- 迁 Postgres / 托管 SQLite  
-- 反向代理与健康检查探针：`GET /api/health`  
-
-## 八、健康检查
+## 七、健康检查
 
 ```http
-GET /api/health → { "status": "ok", "timestamp": "..." }
+GET /api/health → { "status": "ok", "timestamp": "...", "version": "initial-fast-launch" }
 ```

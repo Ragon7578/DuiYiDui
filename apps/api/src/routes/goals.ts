@@ -259,11 +259,19 @@ function notifyWitnesses(goalId: string, goalTitle: string, event: string): void
   `).all(goalId) as { witness_user_id: string; witness_name: string }[]
 
   for (const w of witnesses) {
+    // 监督他人达成：已确认的见证人获得成就点（信任分）
+    if (event === "achieved") {
+      db.prepare(`
+        UPDATE users SET trust_score = MIN(100, trust_score + 3) WHERE id = ?
+      `).run(w.witness_user_id)
+    }
     createNotification(
       w.witness_user_id,
       "goal_achieved",
       "见证目标已达成",
-      `你见证的目标「${goalTitle}」已${event === "achieved" ? "达成" : "更新"}！`,
+      event === "achieved"
+        ? `你见证的目标「${goalTitle}」已达成，信任分 +3`
+        : `你见证的目标「${goalTitle}」已更新`,
       goalId
     )
   }
