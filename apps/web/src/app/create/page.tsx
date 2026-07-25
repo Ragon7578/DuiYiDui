@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect, Suspense } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Card } from "@/components/ui/card"
 import { FormLabel } from "@/components/ui/form-label"
 import { AuthGuard } from "@/components/layout/auth-guard"
@@ -14,6 +14,7 @@ import {
   type ParsedGoal,
   type ParsedContract,
 } from "@/lib/api-client"
+import { track } from "@/lib/analytics"
 import { ApiError } from "@/lib/api"
 import type { AuthUser } from "@/lib/types"
 
@@ -22,12 +23,16 @@ type CreateMode = "goal" | "contract"
 export default function CreatePage() {
   return (
     <AuthGuard>
-      <CreateContent />
+      <Suspense fallback={<p className="text-muted">加载中...</p>}>
+        <CreateContent />
+      </Suspense>
     </AuthGuard>
   )
 }
 
 function CreateContent() {
+  const searchParams = useSearchParams()
+  const onboarding = searchParams.get("onboarding") === "1"
   const [mode, setMode] = useState<CreateMode>("goal")
   const [draftText, setDraftText] = useState("")
   const [parsing, setParsing] = useState(false)
@@ -37,6 +42,10 @@ function CreateContent() {
   const [applyKey, setApplyKey] = useState(0)
   const [seedGoal, setSeedGoal] = useState<ParsedGoal | null>(null)
   const [seedContract, setSeedContract] = useState<ParsedContract | null>(null)
+
+  useEffect(() => {
+    track("page_create", { onboarding })
+  }, [onboarding])
 
   async function handleParse() {
     if (!draftText.trim()) {
@@ -99,14 +108,23 @@ function CreateContent() {
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-seal">New</p>
         <h1 className="mt-1 font-display text-3xl font-black tracking-tight">创建</h1>
         <p className="mt-2 text-sm text-muted">
-          用语音或一句话描述计划，AI 会帮你填好关键信息
+          先写清「要做到什么」和「做到了奖励自己什么」。语音识别可选，填表同样完整。
         </p>
       </div>
 
-      <Card className="space-y-4 border-ink/10 bg-gradient-to-br from-white/90 to-seal-soft/30">
+      {onboarding && (
+        <div className="rounded border border-seal/25 bg-seal-soft/50 px-4 py-3 text-sm text-ink">
+          <p className="font-semibold">欢迎加入兑一兑</p>
+          <p className="mt-1 text-muted">
+            建议先创建一个带奖励的目标。可选邀请 1 位见证人——找一个在乎你说到做到的人。
+          </p>
+        </div>
+      )}
+
+      <Card className="space-y-4 border-ink/10 bg-white/90">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h2 className="font-display text-xl font-bold">智能录入</h2>
+            <h2 className="font-display text-xl font-bold">智能录入（可选）</h2>
             <p className="mt-1 text-xs text-muted">
               说：「如果我连续跑步30天，就奖励自己一双跑鞋，截止日期8月15日」
             </p>
@@ -211,7 +229,7 @@ function CreateContent() {
       </div>
 
       {mode === "goal" ? (
-        <GoalForm key={`goal-${applyKey}`} seed={seedGoal} />
+        <GoalForm key={`goal-${applyKey}`} seed={seedGoal} onboarding={onboarding} />
       ) : (
         <ContractForm key={`contract-${applyKey}`} seed={seedContract} />
       )}
@@ -219,7 +237,13 @@ function CreateContent() {
   )
 }
 
-function GoalForm({ seed }: { seed?: ParsedGoal | null }) {
+function GoalForm({
+  seed,
+  onboarding,
+}: {
+  seed?: ParsedGoal | null
+  onboarding?: boolean
+}) {
   const router = useRouter()
   const [title, setTitle] = useState(seed?.title || "")
   const [description, setDescription] = useState(seed?.description || "")
@@ -246,6 +270,8 @@ function GoalForm({ seed }: { seed?: ParsedGoal | null }) {
         deadline: deadline || undefined,
         witnessUserId: witnessUserId || undefined,
       })
+      track("create_goal", { hasWitness: Boolean(witnessUserId), onboarding: Boolean(onboarding) })
+      if (witnessUserId) track("invite_witness")
       router.push("/goals")
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "创建失败")
@@ -276,23 +302,24 @@ function GoalForm({ seed }: { seed?: ParsedGoal | null }) {
           />
         </div>
         <div>
+          <FormLabel required>做到了，你打算奖励自己什么？</FormLabel>
+          <input
+            value={reward}
+            onChange={(e) => setReward(e.target.value)}
+            placeholder="例如：一双跑鞋 / 一顿大餐"
+            className="input-field"
+            required
+          />
+          <p className="mt-1 text-xs text-muted">奖励写清楚，达成后才兑得了——这是产品核心，不是备注。</p>
+        </div>
+        <div>
           <FormLabel>描述</FormLabel>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="具体要做些什么？"
+            placeholder="具体要做些什么？（选填）"
             rows={3}
             className="input-field"
-          />
-        </div>
-        <div>
-          <FormLabel required>奖励</FormLabel>
-          <input
-            value={reward}
-            onChange={(e) => setReward(e.target.value)}
-            placeholder="达成后你想奖励自己什么？"
-            className="input-field"
-            required
           />
         </div>
         <div>
@@ -305,24 +332,27 @@ function GoalForm({ seed }: { seed?: ParsedGoal | null }) {
           />
         </div>
         <div>
-          <FormLabel>监督见证人</FormLabel>
+          <FormLabel>见证人（建议 1 人，可不选）</FormLabel>
           <select
             value={witnessUserId}
             onChange={(e) => setWitnessUserId(e.target.value)}
             className="input-field"
           >
-            <option value="">不邀请（可选）</option>
+            <option value="">稍后再邀请</option>
             {users.map((u) => (
               <option key={u.id} value={u.id}>{u.name}</option>
             ))}
           </select>
+          <p className="mt-1 text-xs text-muted">
+            找一个在乎你说到做到的人；对方确认见证后，你达成时对方也会获得成就点（信任分 +3）。
+          </p>
         </div>
         <button
           type="submit"
           disabled={loading}
           className="btn-primary w-full py-2.5 text-sm"
         >
-          {loading ? "创建中..." : "创建目标"}
+          {loading ? "创建中..." : onboarding ? "创建我的第一个目标" : "创建目标"}
         </button>
       </form>
     </Card>

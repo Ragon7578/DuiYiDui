@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/auth-context"
 import { fetchGoals, updateProfile } from "@/lib/api-client"
 import { ApiError } from "@/lib/api"
 import type { Goal } from "@/lib/types"
+import Link from "next/link"
 
 export default function ProfilePage() {
   return (
@@ -126,6 +127,14 @@ function ProfileContent() {
             {saving ? "保存中..." : "保存资料"}
           </button>
         </form>
+      </Card>
+
+      <Card>
+        <h2 className="mb-2 font-display text-xl font-bold">帮助改进初版</h2>
+        <p className="mb-3 text-sm text-muted">卡点、想法、吐槽都可以。我们靠反馈迭代。</p>
+        <Link href="/feedback" className="btn-primary inline-block px-4 py-2 text-sm">
+          去提意见
+        </Link>
       </Card>
 
       <section className="grid grid-cols-2 gap-4">

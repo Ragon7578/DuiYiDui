@@ -37,7 +37,7 @@ export default function RegisterPage() {
     setLoading(true)
     try {
       await register(username.trim(), password, confirmPassword)
-      router.push("/")
+      router.push("/create?onboarding=1")
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "注册失败")
     } finally {
@@ -49,10 +49,10 @@ export default function RegisterPage() {
     <div className="mx-auto max-w-md space-y-8">
       <div className="animate-rise text-center">
         <p className="font-display text-4xl font-black tracking-tight text-ink">
-          契约精神
+          兑一兑
         </p>
         <h1 className="mt-4 font-display text-2xl font-bold">注册</h1>
-        <p className="mt-2 text-sm text-muted">试验功能 · 用户名 + 密码即可，资料登录后补充</p>
+        <p className="mt-2 text-sm text-muted">用户名 + 密码即可开始。写下目标与奖励，说到做到。</p>
       </div>
 
       <Card className="animate-rise-delay-1">
@@ -110,8 +110,18 @@ export default function RegisterPage() {
             disabled={loading}
             className="btn-primary w-full py-2.5 text-sm"
           >
-            {loading ? "注册中..." : "注册"}
+            {loading ? "注册中..." : "注册并创建第一个目标"}
           </button>
+          <p className="text-center text-xs text-muted">
+            注册即表示你已阅读{" "}
+            <Link href="/terms" className="text-seal hover:underline">
+              用户协议
+            </Link>{" "}
+            与{" "}
+            <Link href="/privacy" className="text-seal hover:underline">
+              隐私政策
+            </Link>
+          </p>
         </form>
       </Card>
 

@@ -38,7 +38,7 @@ export default function LoginPage() {
     <div className="mx-auto max-w-md space-y-8">
       <div className="animate-rise text-center">
         <p className="font-display text-4xl font-black tracking-tight text-ink">
-          契约精神
+          兑一兑
         </p>
         <h1 className="mt-4 font-display text-2xl font-bold">登录</h1>
         <p className="mt-2 text-sm text-muted">试验功能 · 用户名 + 密码即可</p>

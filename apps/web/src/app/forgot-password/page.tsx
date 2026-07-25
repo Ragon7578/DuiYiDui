@@ -34,7 +34,7 @@ export default function ForgotPasswordPage() {
   return (
     <div className="mx-auto max-w-md space-y-8">
       <div className="animate-rise text-center">
-        <p className="font-display text-4xl font-black tracking-tight text-ink">契约精神</p>
+        <p className="font-display text-4xl font-black tracking-tight text-ink">兑一兑</p>
         <h1 className="mt-4 font-display text-2xl font-bold">找回密码</h1>
         <p className="mt-2 text-sm text-muted">
           请输入你在个人资料中绑定的邮箱

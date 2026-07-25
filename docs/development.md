@@ -1,262 +1,146 @@
 # 本地开发指南
 
-本文档说明如何在本地启动和调试 **契约精神** 项目的完整开发环境。
-
----
-
 ## 一、环境要求
 
 | 工具 | 版本 | 用途 |
 |------|------|------|
-| Node.js | ≥ 18 | 前端 + Node 后端 |
-| npm | ≥ 9 | 包管理 |
-| Java | ≥ 17（可选） | Java 微服务后端（规划中） |
-| Maven | ≥ 3.9（可选） | Java 构建 |
+| Node.js | ≥ 18 | 前端 + API |
+| npm | ≥ 9 | workspaces |
+| Java 17 + Maven | 可选 | `services/java` |
 
-推荐使用 [nvm](https://github.com/nvm-sh/nvm) 管理 Node.js 版本。
+推荐 [nvm](https://github.com/nvm-sh/nvm) 管理 Node 版本。
 
----
-
-## 二、项目结构
-
-```
-contract-spirit/
-├── apps/
-│   ├── web/              # Next.js 前端 (:3000)
-│   └── api/              # Express + SQLite 后端 (:4000)
-├── services/
-│   └── java/             # Spring Boot 微服务 (:8081)
-├── docs/                 # 项目文档
-└── package.json          # Monorepo 根配置
-```
-
----
-
-## 三、快速启动
-
-### 1. 克隆仓库
+## 二、克隆与启动
 
 ```bash
-git clone https://github.com/Ragon7578/SayAndDone.git contract-spirit
-cd contract-spirit
-```
+git clone https://gitee.com/ragon6749/say-and-done.git
+# 或 https://github.com/Ragon7578/SayAndDone.git
+cd say-and-done   # 或本地目录名 contract-spirit
 
-### 2. 安装并启动（推荐）
-
-```bash
 npm install
-npm run seed      # 初始化 SQLite 数据库
-npm run dev       # 同时启动 API (:4000) 和 Web (:3000)
-```
-
-或分别启动：
-
-```bash
-npm run dev:api   # http://localhost:4000
-npm run dev:web   # http://localhost:3000
-```
-
-验证后端：
-
-```bash
-curl http://localhost:4000/api/health
-# {"status":"ok","timestamp":"..."}
-```
-
-访问 [http://localhost:3000](http://localhost:3000) 查看应用。
-
----
-
-## 四、当前数据流
-
-```
-浏览器 → Next.js (:3000) → Express API (:4000) → SQLite
-```
-
-登录后所有页面通过 JWT 调用后端 API。试验登录：用户名 + 密码（无需邮箱）。
-
----
-
-## 五、后端开发
-
-### 目录结构
-
-```
-apps/api/
-├── src/
-│   ├── index.ts           # 入口，路由注册
-│   ├── types.ts           # 共享类型定义
-│   ├── routes/
-│   │   ├── goals.ts       # 目标 CRUD
-│   │   ├── contracts.ts   # 契约 CRUD + 条款更新
-│   │   ├── pledges.ts     # 承诺 CRUD
-│   │   └── profile.ts     # 用户资料 + 统计
-│   └── db/
-│       ├── schema.ts      # SQLite 建表 + 连接
-│       └── seed.ts        # 示例数据
-├── data/                  # SQLite 数据库文件（gitignore）
-└── package.json
-```
-
-### 常用命令
-
-| 命令 | 说明 |
-|------|------|
-| `npm run dev` | 热重载开发模式（tsx watch） |
-| `npm run build` | 编译 TypeScript → `dist/` |
-| `npm run start` | 运行编译后的生产代码 |
-| `npm run seed` | 重置数据库并写入示例数据 |
-
-### 数据库
-
-- 引擎：Node.js 内置 `node:sqlite`（无需额外安装）
-- 文件路径：`apps/api/data/contract-spirit.db`
-- 首次启动或执行 `seed` 时自动建表
-- 重置数据：删除 `.db` 文件后重新 `npm run seed`
-
-### 环境变量
-
-| 变量 | 默认值 | 说明 |
-|------|--------|------|
-| `PORT` | `4000` | API 监听端口 |
-
----
-
-## 六、前端开发
-
-### 目录结构
-
-```
-apps/web/
-├── src/
-│   ├── app/               # App Router 页面
-│   │   ├── page.tsx       # 首页 /
-│   │   ├── goals/         # 目标 /goals
-│   │   ├── contracts/     # 契约 /contracts, /contracts/:id
-│   │   ├── pledges/       # 承诺 /pledges
-│   │   ├── profile/       # 个人主页 /profile
-│   │   └── create/        # 创建 /create
-│   ├── components/
-│   │   ├── ui/            # 通用 UI 组件
-│   │   ├── contract/      # 契约业务组件
-│   │   └── layout/        # 布局（Navbar 等）
-│   └── lib/
-│       ├── types.ts       # 前端类型（与后端对齐）
-│       ├── mock-data.ts   # 当前数据源（待替换为 API）
-│       └── utils.ts       # 工具函数
-└── package.json
-```
-
-### 常用命令
-
-| 命令 | 说明 |
-|------|------|
-| `npm run dev` | 开发服务器（Turbopack） |
-| `npm run build` | 生产构建 |
-| `npm run start` | 启动生产服务器 |
-| `npm run lint` | ESLint 检查 |
-
-### 环境变量
-
-| 变量 | 默认值 | 说明 |
-|------|--------|------|
-| `NEXT_PUBLIC_API_URL` | 未设置 | 后端 API 地址（联调时使用） |
-
-在 `apps/web/.env.local` 中配置：
-
-```env
-NEXT_PUBLIC_API_URL=http://localhost:4000
-```
-
----
-
-## 七、Java 后端（规划中）
-
-`services/java/` 是 Spring Boot 微服务架构的脚手架，目前仅有 Maven 模块结构和代码生成脚本，尚未实现业务逻辑。
-
-| 模块 | 职责 |
-|------|------|
-| `common` | 共享 DTO、工具类 |
-| `core-service` | 核心业务（目标、契约、承诺） |
-| `ai-service` | AI 辅助功能（Spring AI） |
-| `gateway` | API 网关 |
-
-详见 [backend.md](backend.md)。
-
----
-
-## 八、开发工作流
-
-### 添加新 API 端点
-
-1. 在 `apps/api/src/types.ts` 添加类型
-2. 在 `apps/api/src/routes/` 添加或修改路由
-3. 在 `apps/api/src/index.ts` 注册路由（如为新模块）
-4. 更新 [api.md](api.md)
-5. 在前端 `src/lib/` 添加 API 调用函数（联调阶段）
-
-### 添加新页面
-
-1. 在 `src/app/` 下创建路由目录和 `page.tsx`
-2. 如需交互，标注 `"use client"`
-3. 复用 `components/ui/` 中的通用组件
-4. 更新 [architecture.md](architecture.md) 路由表
-
-### 重置开发数据
-
-```bash
-cd apps/api
-rm -f data/contract-spirit.db
 npm run seed
+npm run dev
 ```
 
----
+- 前端：http://localhost:3000  
+- API：http://localhost:4000  
 
-## 九、常见问题
-
-### 端口被占用
+分别启动：
 
 ```bash
-# 查看占用 3000 或 4000 端口的进程
-lsof -i :3000
-lsof -i :4000
-
-# 终止进程
-kill -9 <PID>
+npm run dev:api
+npm run dev:web
 ```
 
-### 前端 build 失败
+## 三、目录结构（开发关注点）
+
+```
+apps/
+├── api/
+│   ├── data/                 # SQLite 文件（gitignore）
+│   ├── src/
+│   │   ├── index.ts          # Express 入口、CORS、路由挂载
+│   │   ├── middleware/auth.ts
+│   │   ├── db/schema.ts      # 建表 + 迁移
+│   │   ├── db/seed.ts
+│   │   ├── routes/           # auth goals contracts pledges profile notifications ai
+│   │   ├── services/         # notifications, intent-parser
+│   │   └── types.ts
+│   └── package.json
+└── web/
+    ├── src/
+    │   ├── app/              # App Router 页面
+    │   ├── components/
+    │   └── lib/
+    │       ├── api.ts          # fetch + token
+    │       ├── api-client.ts   # 业务 API
+    │       ├── auth-context.tsx
+    │       └── types.ts
+    └── package.json
+```
+
+## 四、环境变量
+
+### API（`apps/api`）
+
+| 变量 | 默认 | 说明 |
+|------|------|------|
+| `PORT` | `4000` | 监听端口 |
+| `JWT_SECRET` | 开发默认字符串 | **生产必须改** |
+| `APP_URL` | `http://localhost:3000` | 密码重置链接前缀 |
+| `OPENAI_API_KEY` | 空 | 可选；有则增强 `/api/ai/parse` |
+| `OPENAI_MODEL` | `gpt-4o-mini` | 可选模型名 |
+
+### Web（`apps/web`）
+
+| 变量 | 默认 | 说明 |
+|------|------|------|
+| `NEXT_PUBLIC_API_URL` | `http://localhost:4000` | API 基址 |
+
+可复制 `apps/web/.env.local.example` 为 `.env.local`。
+
+## 五、认证与联调要点
+
+1. 注册 / 登录返回 `{ token, user }`  
+2. 前端把 token 存 `localStorage` 键名 `cs_token`  
+3. 除 `POST /api/auth/register|login|forgot-password|reset-password` 与 `GET /api/health` 外，业务接口需要：
+
+```http
+Authorization: Bearer <token>
+```
+
+4. `npm run seed` 会清空并写入演示用户（用户名如 `张三`，密码见 seed 输出 / 文档约定，一般为 `password123`），用于见证等联调。
+
+## 六、常用命令
 
 ```bash
-cd apps/web
-rm -rf .next node_modules
-npm install
-npm run build
+npm run seed              # 重置 SQLite 演示数据
+npm run build             # 构建 api + web
+npm run lint              # 前端 ESLint
+
+# 仅 API
+npm run seed -w @contract-spirit/api
+npm run build -w @contract-spirit/api
 ```
 
-### 后端数据库报错
+数据库文件：`apps/api/data/contract-spirit.db`（勿提交）。
 
-删除数据库文件后重新初始化：
+## 七、前端页面一览
+
+| 路由 | 说明 |
+|------|------|
+| `/` | 首页仪表盘 |
+| `/goals` | 目标列表 |
+| `/contracts`、`/contracts/[id]` | 契约 |
+| `/pledges` | 轻量承诺（页面存在，主导航未挂） |
+| `/create` | 创建目标 / 契约（语音 + AI 填表） |
+| `/profile` | 个人资料与统计 |
+| `/notifications` | 通知 |
+| `/login` `/register` | 登录注册 |
+| `/forgot-password` `/reset-password` | 找回 / 重置密码 |
+
+受保护页通过 `AuthGuard` + `AuthProvider` 控制。
+
+## 八、Java 服务（可选）
 
 ```bash
-cd apps/api
-rm -f data/contract-spirit.db
-npm run seed
+cd services/java
+mvn -pl core-service -am spring-boot:run
+# 默认 :8081 健康检查
 ```
 
-### CORS 问题
+当前为脚手架，业务仍以 Node API 为准。
 
-后端已启用 `cors()` 中间件，允许所有来源。生产环境需限制允许的 origin。
+## 九、FAQ
 
----
+**跨域？**  
+开发期 API 已开 CORS；生产应限制来源。
 
-## 十、下一步开发任务
+**改端口？**  
+API 用 `PORT`；Web 用 Next 默认 3000，并同步改 `NEXT_PUBLIC_API_URL` 与 `APP_URL`。
 
-| 优先级 | 任务 | 说明 |
-|--------|------|------|
-| P0 | 前后端联调 | ~~前端替换 mock-data，调用 REST API~~ ✅ |
-| P0 | 用户认证 | ~~多用户 JWT 登录/注册~~ ✅ |
-| P1 | 创建目标/契约表单 | ~~`/create` 页面提交到 API~~ ✅ |
-| P1 | 错误处理 | 前端 loading / error 状态 |
-| P2 | 单元测试 | Vitest（前端）+ 集成测试（后端） |
-| P2 | CI/CD | GitHub Actions 自动构建 |
+**忘记密码在本地怎么测？**  
+先在「我的」绑定邮箱 → 忘记密码 → 试验环境响应里带 `resetUrl`（并打服务端日志）。
+
+**seed 后登录不了？**  
+确认用的是 seed 用户名（`name` 字段），不是邮箱；密码以 seed 脚本为准。

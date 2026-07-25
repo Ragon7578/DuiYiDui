@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useCallback } from "react"
 import { fetchMe, login as apiLogin, register as apiRegister, clearToken, setToken } from "./api-client"
+import { track } from "./analytics"
 import type { UserProfile } from "./types"
 
 interface AuthContextValue {
@@ -42,6 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const res = await apiLogin(username, password)
     setToken(res.token)
     setUser(res.user)
+    track("login")
   }
 
   async function register(
@@ -52,6 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const res = await apiRegister(username, password, confirmPassword)
     setToken(res.token)
     setUser(res.user)
+    track("register")
   }
 
   function logout() {

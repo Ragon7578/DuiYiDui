@@ -1,255 +1,116 @@
 # 数据模型
 
-## 一、目标（Goal）
-
-目标是用户对自己做出的承诺，附带有奖励。这是平台的核心实体。
-
-### 状态枚举
+## 一、概念模型
 
 ```
-active（进行中）→ achieved（已达成）→ reward_claimed（奖励已兑现）
-                → abandoned（放弃）
+User
+ ├─ Goal（含 reward 字段，无独立 rewards 表）
+ │    └─ GoalWitness
+ ├─ Pledge
+ ├─ Notification
+ └─（作为 Party 参与）Contract
+      ├─ Party
+      └─ Clause
 ```
 
-### 字段
+**说明：** 产品文档里的「奖励」在物理模型上是 `goals.reward` + `reward_claimed`，不是单独实体表。
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `id` | `string` | 是 | 唯一标识 |
-| `title` | `string` | 是 | 目标标题，如"瘦到60公斤" |
-| `description` | `string` | 否 | 详细描述 |
-| `reward` | `string` | 是 | 达成后的奖励，如"买一个包包" |
-| `rewardClaimed` | `boolean` | 否 | 奖励是否已兑现 |
-| `deadline` | `string` (ISO) | 否 | 截止日期 |
-| `status` | `GoalStatus` | 是 | 当前状态 |
-| `progress` | `number` | 否 | 进度百分比 (0-100) |
-| `createdAt` | `string` (ISO) | 是 | 创建时间 |
-| `achievedAt` | `string` (ISO) | 否 | 达成时间 |
-| `userId` | `string` | 是 | 所属用户 |
+## 二、UserProfile（API 形状）
 
-```typescript
-type GoalStatus = "active" | "achieved" | "reward_claimed" | "abandoned"
-```
+| 字段 | 说明 |
+|------|------|
+| `id` / `name` | 主键；`name` 即登录用户名 |
+| `email` / `phone` | 可选；登录后绑定 |
+| `avatar` / `bio` | 可选 |
+| `trustScore` | 信任分 |
+| `totalGoals` / `achievedGoals` / `abandonedGoals` | 目标计数 |
+| `totalContracts` / `fulfilledContracts` / `breachedContracts` | 契约计数 |
 
----
-
-## 二、奖励（Reward）
-
-奖励是目标的附属概念，但在设计上独立建模以便扩展。
-
-### 字段
-
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `id` | `string` | 是 | 唯一标识 |
-| `goalId` | `string` | 是 | 关联目标 |
-| `description` | `string` | 是 | 奖励描述，如"买一双 Nike 跑鞋" |
-| `estimatedCost` | `number` | 否 | 预估金额 |
-| `claimed` | `boolean` | 否 | 是否已兑现 |
-| `claimedAt` | `string` (ISO) | 否 | 兑现时间 |
-
----
-
-## 三、契约（Contract）
-
-契约是 **与他人之间** 的约定，包含参与方和条款。
-
-### 状态枚举
-
-```
-draft → active → completed
-              → breached
-              → cancelled
-```
-
-### 字段
-
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `id` | `string` | 是 | 唯一标识 |
-| `title` | `string` | 是 | 契约标题 |
-| `description` | `string` | 否 | 描述 |
-| `parties` | `Party[]` | 是 | 参与方列表 |
-| `clauses` | `Clause[]` | 是 | 条款列表 |
-| `status` | `ContractStatus` | 是 | 当前状态 |
-| `reward` | `string` | 否 | 契约约定的奖励 |
-| `createdAt` | `string` (ISO) | 是 | 创建时间 |
-| `updatedAt` | `string` (ISO) | 是 | 更新时间 |
-| `signedAt` | `string` (ISO) | 否 | 签署时间 |
-
----
-
-## 四、参与方（Party）
-
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `id` | `string` | 是 | 用户 ID |
-| `name` | `string` | 是 | 显示名称 |
-| `role` | `"promisor" \| "promisee" \| "both"` | 是 | 承诺方 / 接受方 / 双方 |
-| `signedAt` | `string` (ISO) | 否 | 签署时间 |
-
----
-
-## 五、条款（Clause）
-
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `id` | `string` | 是 | 唯一标识 |
-| `content` | `string` | 是 | 条款内容 |
-| `status` | `"pending" \| "fulfilled" \| "breached"` | 是 | 履行状态 |
-| `dueDate` | `string` (ISO) | 否 | 截止日期 |
-
----
-
-## 六、承诺（Pledge）
-
-承诺是轻量的个人保证，目标的前身概念。
-
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `id` | `string` | 是 | 唯一标识 |
-| `title` | `string` | 是 | 承诺标题 |
-| `description` | `string` | 否 | 描述 |
-| `maker` | `string` | 是 | 承诺人 |
-| `deadline` | `string` (ISO) | 否 | 截止日期 |
-| `status` | `"active" \| "fulfilled" \| "broken"` | 是 | 状态 |
-| `createdAt` | `string` (ISO) | 是 | 创建时间 |
-
----
-
-## 七、用户（UserProfile）
-
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `id` | `string` | 是 | 用户 ID |
-| `name` | `string` | 是 | 用户名 |
-| `avatar` | `string` | 否 | 头像 URL |
-| `trustScore` | `number` | 是 | 信任分 (0-100) |
-| `totalGoals` | `number` | 否 | 总目标数 |
-| `achievedGoals` | `number` | 否 | 已达成目标数 |
-| `abandonedGoals` | `number` | 否 | 放弃目标数 |
-| `bio` | `string` | 否 | 个人简介 |
-
-### 信任分算法
-
-```
-信任分 = 50（基础分）
-       + 已达成目标数 × 5
-       - 放弃目标数 × 5
-       + 已履行契约数 × 10
-       - 违约次数 × 15
-```
-
----
-
-## 八、ER 关系
-
-```
-UserProfile (1) ────< (N) Goal        (用户有多个目标)
-UserProfile (1) ────< (N) Contract    (用户参与多个契约)
-UserProfile (1) ────< (N) Pledge      (用户创建多个承诺)
-Goal        (1) ──── (1) Reward      (每个目标有对应奖励)
-Contract    (1) ────< (N) Clause      (契约包含多个条款)
-Contract    (1) ────< (N) Party       (契约有多个参与方)
-Party       (N) ────> (1) UserProfile (参与方对应一个用户)
-```
-
-## 九、核心实体权重
-
-| 实体 | 优先级 | 说明 |
-|------|--------|------|
-| Goal + Reward | P0 | 平台核心，先做 |
-| Contract | P1 | 多人协作场景 |
-| Pledge | P2 | 轻量承诺，可被 Goal 覆盖 |
-| UserProfile | P0 | 用户系统 |
-
----
-
-## 十、数据库 Schema（SQLite）
-
-后端使用 SQLite 持久化，表结构与上述实体模型对应。数据库文件位于 `apps/api/data/contract-spirit.db`。
+## 三、SQLite 表
 
 ### users
 
-| 列 | 类型 | 约束 | 说明 |
-|----|------|------|------|
-| `id` | TEXT | PK | 用户 ID |
-| `name` | TEXT | NOT NULL | 用户名 |
-| `avatar` | TEXT | | 头像 URL |
-| `trust_score` | INTEGER | DEFAULT 50 | 信任分 |
-| `total_goals` | INTEGER | DEFAULT 0 | 总目标数 |
-| `achieved_goals` | INTEGER | DEFAULT 0 | 已达成 |
-| `abandoned_goals` | INTEGER | DEFAULT 0 | 已放弃 |
-| `total_contracts` | INTEGER | DEFAULT 0 | 总契约数 |
-| `fulfilled_contracts` | INTEGER | DEFAULT 0 | 已履行 |
-| `breached_contracts` | INTEGER | DEFAULT 0 | 已违约 |
-| `bio` | TEXT | DEFAULT '' | 简介 |
+| 列 | 说明 |
+|----|------|
+| `id` | PK |
+| `name` | 登录名，非空 |
+| `email` | 可空，唯一（应用层约束） |
+| `password_hash` | bcrypt |
+| `phone` | 可空（迁移列） |
+| `password_reset_token` / `password_reset_expires` | 重置密码（迁移列） |
+| `avatar` / `bio` | |
+| `trust_score` | 默认 50 |
+| 各 `*_goals` / `*_contracts` 计数 | 默认 0 |
 
 ### goals
 
-| 列 | 类型 | 约束 | 说明 |
-|----|------|------|------|
-| `id` | TEXT | PK | 目标 ID |
-| `title` | TEXT | NOT NULL | 标题 |
-| `description` | TEXT | | 描述 |
-| `reward` | TEXT | NOT NULL | 奖励 |
-| `reward_claimed` | INTEGER | DEFAULT 0 | 0/1 布尔 |
-| `deadline` | TEXT | | 截止日期 |
-| `status` | TEXT | CHECK | active/achieved/reward_claimed/abandoned |
-| `progress` | INTEGER | 0-100 | 进度 |
-| `created_at` | TEXT | DEFAULT now | 创建时间 |
-| `achieved_at` | TEXT | | 达成时间 |
-| `user_id` | TEXT | FK → users | 所属用户 |
+| 列 | 说明 |
+|----|------|
+| `id` / `user_id` | |
+| `title` / `description` | |
+| `reward` / `reward_claimed` | 奖励文案与是否已兑现 |
+| `deadline` / `progress` | 0–100 |
+| `status` | `active` \| `achieved` \| `reward_claimed` \| `abandoned` |
+| `created_at` / `achieved_at` | |
 
-### contracts
+### goal_witnesses
 
-| 列 | 类型 | 约束 | 说明 |
-|----|------|------|------|
-| `id` | TEXT | PK | 契约 ID |
-| `title` | TEXT | NOT NULL | 标题 |
-| `description` | TEXT | DEFAULT '' | 描述 |
-| `status` | TEXT | CHECK | draft/active/completed/breached/cancelled |
-| `reward` | TEXT | | 奖励 |
-| `created_at` | TEXT | DEFAULT now | 创建时间 |
-| `updated_at` | TEXT | DEFAULT now | 更新时间 |
-| `signed_at` | TEXT | | 签署时间 |
+| 列 | 说明 |
+|----|------|
+| `goal_id` / `witness_user_id` / `witness_name` | |
+| `status` | `pending` \| `confirmed` \| `declined` |
+| `invited_at` / `confirmed_at` | |
 
-### parties
+### contracts / parties / clauses
 
-| 列 | 类型 | 约束 | 说明 |
-|----|------|------|------|
-| `id` | TEXT | PK (复合) | 用户 ID |
-| `contract_id` | TEXT | PK (复合), FK → contracts | 契约 ID |
-| `name` | TEXT | NOT NULL | 显示名 |
-| `role` | TEXT | CHECK | promisor/promisee/both |
-| `signed_at` | TEXT | | 签署时间 |
-
-删除契约时级联删除参与方（`ON DELETE CASCADE`）。
-
-### clauses
-
-| 列 | 类型 | 约束 | 说明 |
-|----|------|------|------|
-| `id` | TEXT | PK | 条款 ID |
-| `contract_id` | TEXT | FK → contracts | 契约 ID |
-| `content` | TEXT | NOT NULL | 内容 |
-| `status` | TEXT | CHECK | pending/fulfilled/breached |
-| `due_date` | TEXT | | 截止日期 |
+- `contracts.status`：`draft` \| `active` \| `completed` \| `breached` \| `cancelled`  
+- `parties.role`：`promisor` \| `promisee` \| `both`  
+- `clauses.status`：`pending` \| `fulfilled` \| `breached`  
 
 ### pledges
 
-| 列 | 类型 | 约束 | 说明 |
-|----|------|------|------|
-| `id` | TEXT | PK | 承诺 ID |
-| `title` | TEXT | NOT NULL | 标题 |
-| `description` | TEXT | DEFAULT '' | 描述 |
-| `maker` | TEXT | NOT NULL | 承诺人 |
-| `deadline` | TEXT | | 截止日期 |
-| `status` | TEXT | CHECK | active/fulfilled/broken |
-| `created_at` | TEXT | DEFAULT now | 创建时间 |
+含 `user_id`（可空兼容旧数据）；状态 `active` \| `fulfilled` \| `broken`。
 
-### 命名约定
+### notifications
 
-- API 响应使用 camelCase（`trustScore`、`createdAt`）
-- 数据库列使用 snake_case（`trust_score`、`created_at`）
-- 路由 handler 中通过 `rowToXxx()` 函数完成转换
+| 列 | 说明 |
+|----|------|
+| `user_id` / `type` / `title` / `message` | |
+| `related_id` | 关联业务 id |
+| `read` | 0/1 |
+| `created_at` | |
+
+## 四、信任分 / 成就点规则（与实现一致）
+
+```
+默认 50，范围约 0–100
+
+【自己达成】
+  目标达成（本人）     +5
+  目标放弃（本人）     -5
+  契约条款履行（本人） +10
+  契约违约（本人）     -15
+
+【监督他人达成】
+  作为已确认见证人，对方目标达成  +3
+```
+
+说明：目标与契约是两条线；成就点都进同一套 `trust_score`。见证人须状态为 `confirmed` 才得分。
+
+以 `apps/api/src/routes/goals.ts`、`contracts.ts` 中的 SQL 为准。
+
+## 五、认证相关约定
+
+- 注册不写邮箱；`email`/`phone` 通过 `PATCH /api/profile`  
+- 找回密码依赖已绑定且唯一的 `email`  
+- 重置成功后清空 `password_reset_token` / `expires`  
+
+## 六、优先级（产品实体）
+
+| 实体 | 优先级 | 说明 |
+|------|--------|------|
+| Goal + Reward 字段 | P0 | 核心 |
+| UserProfile + Auth | P0 | 已实现 |
+| Contract + Clause | P1 | 已实现 |
+| Notification / Witness | P1 | 已实现 |
+| Pledge | P2 | API+页面有，导航弱化 |

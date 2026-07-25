@@ -1,199 +1,131 @@
-# 技术架构说明
+# 技术架构
 
-## 一、整体架构
-
-### 系统分层
+## 一、总览
 
 ```
-┌──────────────────────────────────────────────────┐
-│                    用户层                         │
-│           浏览器 (Chrome / Safari / Edge)          │
-└────────────────────┬─────────────────────────────┘
-                     │ HTTP
-┌────────────────────▼─────────────────────────────┐
-│                  前端层                            │
-│       Next.js 16 (App Router + React 19)          │
-│                                                    │
-│   ┌──────────┐ ┌──────────┐ ┌──────────────────┐  │
-│   │ 页面层    │ │ 组件层    │ │ 工具/数据层       │  │
-│   │ app/     │ │components│ │ lib/             │  │
-│   └──────────┘ └──────────┘ └──────────────────┘  │
-└────────────────────┬─────────────────────────────┘
-                     │ API 请求（后续）
-┌────────────────────▼─────────────────────────────┐
-│                  后端层                            │
-│         Express 4 + TypeScript (:4000)            │
-│   /api/goals  /api/contracts  /api/pledges        │
-└────────────────────┬─────────────────────────────┘
-                     │
-┌────────────────────▼─────────────────────────────┐
-│                  数据层                            │
-│         SQLite (node:sqlite)                       │
-└──────────────────────────────────────────────────┘
+浏览器
+  │
+  ▼
+Next.js App Router (:3000)     # apps/web
+  │  Authorization: Bearer JWT
+  │  NEXT_PUBLIC_API_URL
+  ▼
+Express REST API (:4000)       # apps/api
+  │  requireAuth（业务路由）
+  ▼
+SQLite (node:sqlite)           # apps/api/data/*.db
 ```
 
-### 当前架构（开发阶段）
+可选：`services/java` Spring Boot 脚手架（未承接主业务）。
+
+## 二、当前架构（已实现）
 
 ```
-用户 → Next.js (:3000) → mock-data.ts（内存数据，待替换）
-后端 API (:4000) → SQLite（已实现，待联调）
+用户 → 注册/登录拿 JWT → 前端 AuthProvider 存 cs_token
+     → apiFetch 自动带 Bearer → Express 校验 → SQLite
 ```
 
-### 目标架构
+| 层 | 技术 |
+|----|------|
+| 前端 | Next.js 16（App Router）+ React 19 + TypeScript + Tailwind CSS v4 |
+| 状态 / 认证 | React Context（`auth-context`）+ localStorage |
+| API 客户端 | `lib/api.ts` + `lib/api-client.ts` |
+| 后端 | Express 4 + TypeScript |
+| 鉴权 | JWT（7 天）+ bcrypt（注册/改密） |
+| 数据库 | SQLite，`PRAGMA foreign_keys=ON`，启动时建表/迁移 |
+
+## 三、前端分层
 
 ```
-用户 → Next.js (:3000) → Express API (:4000) → SQLite
+app/                  # 路由页面（Server/Client 组件）
+components/
+  layout/             # Navbar、AuthGuard
+  ui/                 # Card、Badge、FormLabel、StatsCard
+  create/             # VoiceInput 等
+  contract/
+lib/
+  api.ts              # 底层 fetch、token、ApiError
+  api-client.ts       # 业务方法
+  auth-context.tsx    # login/register/logout/refresh
+  types.ts
 ```
 
----
+### 页面与导航
 
-## 二、前端技术细节
+主导航（登录后）：首页、目标、契约、创建、通知、我的。  
+另有登录/注册/忘记密码/重置密码；`/pledges` 有页面未进主导航。
 
-### 2.1 路由设计
+### 数据流
 
-使用 Next.js App Router，基于文件系统的路由：
+1. 受保护页包在 `AuthGuard` 内  
+2. 列表/表单调用 `api-client`  
+3. `401` 时清理 token（见 `refresh` / 错误处理路径）  
 
-```
-src/app/
-├── page.tsx              /                          (静态生成)
-├── goals/
-│   └── page.tsx          /goals                     (静态生成)
-├── contracts/
-│   ├── page.tsx          /contracts                 (静态生成)
-│   └── [id]/
-│       └── page.tsx      /contracts/:id             (动态服务端渲染)
-├── create/
-│   └── page.tsx          /create                    (客户端组件)
-├── pledges/
-│   └── page.tsx          /pledges                   (静态生成)
-└── profile/
-    └── page.tsx          /profile                   (静态生成)
-```
-
-**渲染策略**：
-- 静态页面（`○`）：首页、契约列表、承诺列表、个人主页 — 构建时预渲染
-- 动态页面（`ƒ`）：契约详情 — 每次请求时服务端渲染（后续接入真实数据后）
-
-### 2.2 组件设计模式
-
-#### 分层架构
+## 四、后端分层
 
 ```
-页面组件 (app/)          ← 负责数据获取、页面布局、状态管理
-    │
-业务组件 (components/contract/)  ← 负责特定业务的展示逻辑
-    │
-通用 UI (components/ui/) ← 纯展示组件，无业务依赖
-    │
-布局组件 (components/layout/) ← 导航、页脚等全局布局
+index.ts                 # CORS、JSON、挂载 /api/*
+middleware/auth.ts       # signToken / requireAuth / optionalAuth
+routes/*                 # 按资源拆分
+services/
+  notifications.ts       # 截止提醒等
+  intent-parser.ts       # 自然语言 → 表单字段（可走 OpenAI）
+db/schema.ts             # Schema + migrateSchema
+db/seed.ts
 ```
 
-#### 组件规范
+### 路由挂载（逻辑分组）
 
-| 原则 | 说明 |
+| 前缀 | 模块 |
 |------|------|
-| 单一职责 | 每个组件只做一件事 |
-| Props 接口 | 所有 Props 显式定义 TypeScript 接口 |
-| 无副作用 | UI 组件不发起请求、不操作 localStorage |
-| 命名 | PascalCase，文件名与组件名一致 |
+| `/api/health` | 健康检查（公开） |
+| `/api/auth` | 注册登录、找回密码、me、用户列表 |
+| `/api/goals` | 目标 CRUD、兑奖、见证人 |
+| `/api/contracts` | 契约与条款 |
+| `/api/pledges` | 轻量承诺 |
+| `/api/profile` | 资料与统计 |
+| `/api/notifications` | 通知 |
+| `/api/ai` | `POST /parse` |
 
-### 2.3 客户端 vs 服务端组件
+业务路由默认 `requireAuth`。
 
-| 组件 | 类型 | 原因 |
-|------|------|------|
-| `layout.tsx` | Server | 纯布局，无交互 |
-| `page.tsx`（首页/列表） | Server | 静态数据，SSG |
-| `page.tsx`（详情） | Server | 后续 SSR 获取数据 |
-| `create/page.tsx` | Client | 表单交互，useState |
-| `navbar.tsx` | Client | usePathname 获取当前路由 |
-| `contract-card.tsx` | Server | 纯展示 |
-| `badge.tsx` | Server | 纯展示 |
-| `card.tsx` | Server | 纯展示 |
-| `stats-card.tsx` | Server | 纯展示 |
-
-### 2.4 类型系统
-
-核心类型集中在 `src/lib/types.ts`：
-
-```typescript
-// 契约
-Contract { id, title, description, parties, clauses, status, createdAt, updatedAt, signedAt }
-
-// 参与方
-Party { id, name, role: "promisor" | "promisee" | "both", signedAt }
-
-// 条款
-Clause { id, content, status: "pending" | "fulfilled" | "breached", dueDate }
-
-// 承诺
-Pledge { id, title, description, maker, deadline, status, createdAt }
-
-// 用户
-UserProfile { id, name, trustScore, totalContracts, fulfilledContracts, breachedContracts, bio }
-```
-
-### 2.5 工具函数
-
-`src/lib/utils.ts`：
-
-| 函数 | 说明 |
-|------|------|
-| `formatDate()` | 日期格式化（zh-CN 本地化） |
-| `getStatusColor()` | 状态 → Tailwind 颜色类 |
-| `getStatusLabel()` | 状态 → 中文标签 |
-
-### 2.6 样式方案
-
-- **框架**：Tailwind CSS v4
-- **配置**：零配置（`@import "tailwindcss"`），v4 自动检测使用到的类
-- **命名**：原子化，直接在 JSX 中使用 utility class
-- **响应式**：使用 `lg:grid-cols-2`、`lg:grid-cols-4` 等断点
-- **主题**：当前使用默认主题，后续可自定义
-
-### 2.7 当前限制与未来改进
-
-| 方面 | 当前 | 未来 |
-|------|------|------|
-| 数据 | 前端 mock 数据 + 后端 SQLite API | 前后端联调 |
-| 状态管理 | 无（仅组件内 useState） | React Context / Zustand |
-| 认证 | 无（硬编码用户 u1） | NextAuth.js / JWT |
-| 表单 | 基础受控组件 | React Hook Form + Zod |
-| 测试 | 无 | Vitest + Testing Library |
-| 错误处理 | 基本 404 | 全局 ErrorBoundary |
-| 加载状态 | 无 | loading.tsx + Suspense |
-
----
-
-## 三、后端技术细节
-
-后端已实现 Express REST API，详见 [backend.md](backend.md) 和 [api.md](api.md)。
-
-### 3.1 路由结构
+## 五、认证模型
 
 ```
-/api/health              GET     健康检查
-/api/goals               GET     目标列表
-/api/goals/:id           GET     目标详情
-/api/goals               POST    创建目标
-/api/goals/:id           PATCH   更新目标
-/api/goals/:id           DELETE  删除目标
-/api/contracts           GET     契约列表
-/api/contracts/:id       GET     契约详情
-/api/contracts           POST    创建契约
-/api/contracts/:id       PATCH   更新契约
-/api/contracts/:id/clauses/:clauseId  PATCH  更新条款
-/api/pledges             GET/POST/PATCH/DELETE  承诺 CRUD
-/api/profile             GET/PATCH  用户资料
-/api/profile/stats       GET     聚合统计
+POST /register|login → { token, user }
+JWT payload: { userId, username }
+密码: bcrypt，注册轮数与 auth 路由一致（当前 12）
 ```
 
-### 3.2 信任分联动
+- 注册仅需用户名 + 密码；`email`/`phone` 可空，登录后 PATCH profile  
+- 忘记密码：按已绑定邮箱写 `password_reset_token` / `expires`；试验环境返回 `resetUrl`  
 
-后端在以下事件时自动更新用户信任分：
+## 六、类型系统（前后端对齐）
+
+核心类型见 `apps/api/src/types.ts` 与 `apps/web/src/lib/types.ts`：
+
+- `UserProfile`（含 `email`、`phone`、信任分与计数）  
+- `Goal` / `Contract` / `Pledge` / `Notification` / `GoalWitness`  
+- 创建输入类型：`CreateGoalInput` 等  
+
+## 七、信任分（实现约定）
 
 | 事件 | 变化 |
 |------|------|
-| 目标达成 | +5 |
-| 目标放弃 | -5 |
-| 契约完成 | +10 |
-| 契约违约 | -15 |
+| 目标达成 | +5（封顶 100） |
+| 目标放弃 | -5（保底 0） |
+| 契约履行相关 | +10 |
+| 契约违约相关 | -15 |
+| 新用户默认 | 50 |
+
+以 `apps/api` 路由内 SQL 为准。
+
+## 八、已知限制
+
+| 项 | 说明 |
+|----|------|
+| SQLite 单机 | 适合开发 / 小流量；多实例需换库或共享存储 |
+| 重置密码发信 | 试验期不真正发邮件，返回 / 打印链接 |
+| AI | 无 Key 时用本地规则解析；有 Key 可增强 |
+| Java | 未替代 Node API |
+| 承诺页 | `/pledges` 未挂主导航 |

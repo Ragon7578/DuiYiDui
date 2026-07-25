@@ -1,0 +1,34 @@
+services:
+  api:
+    build:
+      context: .
+      target: api
+    ports:
+      - "4000:4000"
+    environment:
+      NODE_ENV: production
+      PORT: "4000"
+      JWT_SECRET: ${JWT_SECRET:-change-me-before-public-launch}
+      APP_URL: ${APP_URL:-http://localhost:3000}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:3000}
+      DB_PATH: /data/contract-spirit.db
+    volumes:
+      - cs_data:/data
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      target: web
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000}
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000}
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  cs_data:

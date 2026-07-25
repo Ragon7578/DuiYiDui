@@ -238,7 +238,7 @@ export async function parseIntentWithAI(
         messages: [
           {
             role: "system",
-            content: `你是契约精神助手。把用户的口语描述解析为 JSON：
+            content: `你是兑一兑助手。把用户的口语描述解析为 JSON：
 {
   "mode": "goal" | "contract",
   "goals": [{ "title": "", "description": "", "reward": "", "deadline": "YYYY-MM-DD或空" }],

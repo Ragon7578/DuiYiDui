@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { Noto_Serif_SC, Outfit } from "next/font/google"
 import "./globals.css"
 import { Navbar } from "@/components/layout/navbar"
+import { SiteFooter } from "@/components/layout/site-footer"
 import { AuthProvider } from "@/lib/auth-context"
 
 const display = Noto_Serif_SC({
@@ -17,8 +18,8 @@ const body = Outfit({
 })
 
 export const metadata: Metadata = {
-  title: "契约精神",
-  description: "对自己守信，才能对他人守信",
+  title: "兑一兑",
+  description: "做到了，兑一兑。把目标与奖励写清楚，说到做到。",
 }
 
 export default function RootLayout({
@@ -28,12 +29,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN" className={`${display.variable} ${body.variable} h-full antialiased`}>
-      <body className="relative z-10 min-h-full flex flex-col text-ink">
+      <body className="relative z-10 flex min-h-full flex-col text-ink">
         <AuthProvider>
           <Navbar />
-          <main className="relative z-10 flex-1 mx-auto w-full max-w-5xl px-4 py-8 md:py-10">
+          <main className="relative z-10 mx-auto w-full max-w-5xl flex-1 px-4 py-8 md:py-10">
             {children}
           </main>
+          <SiteFooter />
         </AuthProvider>
       </body>
     </html>
