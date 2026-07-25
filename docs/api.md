@@ -1,23 +1,37 @@
 # REST API 参考
 
-后端基于 **Express 4 + TypeScript + SQLite**，默认运行在 `http://localhost:4000`。
+Base URL：`http://localhost:4000`  
+Content-Type：`application/json`  
+错误格式：`{ "error": "说明" }`
 
-所有响应均为 JSON。错误响应格式：
+## 鉴权
 
-```json
-{ "error": "错误描述" }
+| 类型 | 说明 |
+|------|------|
+| 公开 | `GET /api/health`；`POST /api/auth/register`、`login`、`forgot-password`、`reset-password` |
+| 需登录 | 其余业务接口 |
+
+请求头：
+
+```http
+Authorization: Bearer <jwt>
 ```
 
----
+登录/注册成功响应：
 
-## 通用说明
+```json
+{
+  "token": "<jwt>",
+  "user": { "id": "...", "name": "...", "email": null, "phone": null, "trustScore": 50 }
+}
+```
 
-| 项目 | 说明 |
+| HTTP | 含义 |
 |------|------|
-| Base URL | `http://localhost:4000` |
-| Content-Type | `application/json` |
-| 认证 | 暂无（当前硬编码用户 `u1`） |
-| 日期格式 | ISO 8601 字符串，如 `"2026-07-25"` |
+| 400 | 参数错误 |
+| 401 | 未登录 / 用户名密码错误 / token 无效 |
+| 404 | 资源不存在 |
+| 409 | 冲突（用户名或邮箱占用等） |
 
 ---
 
@@ -25,396 +39,156 @@
 
 ### `GET /api/health`
 
-检查服务是否正常运行。
+```json
+{ "status": "ok", "timestamp": "..." }
+```
 
-**响应 200**
+---
+
+## 认证 `/api/auth`
+
+### `POST /api/auth/register`
+
+Body：`{ "username", "password", "confirmPassword?" }`  
+规则：用户名 2–20（中文/字母/数字/下划线）；密码 ≥ 6。  
+**201** → `{ token, user }`
+
+### `POST /api/auth/login`
+
+Body：`{ "username", "password" }`（亦兼容 `name`）  
+**200** → `{ token, user }`
+
+### `POST /api/auth/forgot-password`
+
+Body：`{ "email" }`  
+**200** → `{ "message": "...", "resetUrl?": "http://localhost:3000/reset-password?token=..." }`  
+说明：试验环境可带 `resetUrl`；未绑定邮箱时仍返回通用文案（不暴露是否存在）。
+
+### `POST /api/auth/reset-password`
+
+Body：`{ "token", "password", "confirmPassword?" }`  
+**200** → `{ "message": "..." }`
+
+### `GET /api/auth/me`
+
+需鉴权。返回当前 `UserProfile`。
+
+### `GET /api/auth/users`
+
+需鉴权。返回 `{ id, name }[]`（选见证人等）。
+
+---
+
+## 目标 `/api/goals`
+
+均需鉴权；列表/写操作按当前用户隔离。
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/goals` | 当前用户目标列表 |
+| GET | `/api/goals/:id` | 详情 |
+| POST | `/api/goals` | 创建 |
+| PATCH | `/api/goals/:id` | 更新（含 progress/status） |
+| DELETE | `/api/goals/:id` | 删除 |
+| POST | `/api/goals/:id/claim-reward` | 达成后兑现奖励 |
+| GET | `/api/goals/:id/witnesses` | 见证人列表 |
+| POST | `/api/goals/:id/witnesses` | 邀请见证人 |
+| PATCH | `/api/goals/:id/witnesses/:witnessId` | 确认/拒绝 |
+
+### 创建 Body 示例
 
 ```json
 {
-  "status": "ok",
-  "timestamp": "2026-07-25T02:30:00.000Z"
+  "title": "连续跑步 30 天",
+  "description": "每天至少 3 公里",
+  "reward": "买一双跑鞋",
+  "deadline": "2026-08-15",
+  "witnessUserId": "可选用户 id"
 }
 ```
 
+`userId` 取自 JWT，无需客户端伪造。
+
+### 状态
+
+`active` → `achieved` →（`claim-reward`）`reward_claimed`；或 `abandoned`。
+
+信任分：达成 +5；放弃 -5（见实现）。
+
 ---
 
-## 目标 Goals
+## 契约 `/api/contracts`
 
-### `GET /api/goals`
-
-获取所有目标，按创建时间倒序。
-
-**响应 200** — `Goal[]`
-
-```json
-[
-  {
-    "id": "g1",
-    "title": "连续跑步 30 天",
-    "description": "每天至少跑 3 公里",
-    "reward": "买一双 Nike 跑鞋",
-    "rewardClaimed": false,
-    "deadline": "2026-08-15",
-    "status": "active",
-    "progress": 60,
-    "createdAt": "2026-07-01",
-    "achievedAt": null,
-    "userId": "u1"
-  }
-]
-```
-
-### `GET /api/goals/:id`
-
-获取单个目标。
-
-**响应 200** — `Goal`  
-**响应 404** — 目标不存在
-
-### `POST /api/goals`
-
-创建新目标。
-
-**请求体**
-
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `title` | string | 是 | 目标标题 |
-| `reward` | string | 是 | 达成奖励 |
-| `description` | string | 否 | 详细描述 |
-| `deadline` | string | 否 | 截止日期 |
-| `userId` | string | 否 | 用户 ID，默认 `u1` |
-
-**示例**
-
-```json
-{
-  "title": "读完 20 本书",
-  "reward": "买一台 Kindle",
-  "deadline": "2026-12-31"
-}
-```
-
-**响应 201** — 创建的 `Goal`  
-**响应 400** — 缺少必填字段
-
-**副作用**：对应用户的 `total_goals` +1。
-
-### `PATCH /api/goals/:id`
-
-更新目标。只传需要修改的字段。
-
-**请求体**
-
-| 字段 | 类型 | 说明 |
+| 方法 | 路径 | 说明 |
 |------|------|------|
-| `title` | string | 标题 |
-| `description` | string | 描述 |
-| `reward` | string | 奖励 |
-| `deadline` | string | 截止日期 |
-| `status` | GoalStatus | 状态 |
-| `progress` | number | 进度 0-100 |
-| `rewardClaimed` | boolean | 奖励是否已兑现 |
+| GET/POST | `/api/contracts` | 列表 / 创建 |
+| GET/PATCH/DELETE | `/api/contracts/:id` | 详情 / 更新 / 删除 |
+| PATCH | `/api/contracts/:id/clauses/:clauseId` | 更新条款状态 |
 
-**GoalStatus**: `"active"` | `"achieved"` | `"reward_claimed"` | `"abandoned"`
+契约状态：`draft` | `active` | `completed` | `breached` | `cancelled`  
+条款：`pending` | `fulfilled` | `breached`
 
-**自动行为**：
-- `progress` 设为 100 → 自动标记为 `achieved`，记录 `achievedAt`
-- `status` 变为 `achieved` → 用户 `achieved_goals` +1，信任分 +5
-- `status` 变为 `abandoned` → 用户 `abandoned_goals` +1，信任分 -5
-
-**响应 200** — 更新后的 `Goal`  
-**响应 404** — 目标不存在
-
-### `DELETE /api/goals/:id`
-
-删除目标。
-
-**响应 204** — 无内容  
-**响应 404** — 目标不存在
-
-**副作用**：对应用户的 `total_goals` -1。
+履行/违约会影响参与用户信任分与契约计数（见 `contracts` 路由）。
 
 ---
 
-## 契约 Contracts
+## 承诺 `/api/pledges`
 
-### `GET /api/contracts`
-
-获取所有契约（含参与方和条款），按创建时间倒序。
-
-**响应 200** — `Contract[]`
-
-```json
-[
-  {
-    "id": "c1",
-    "title": "合作协议",
-    "description": "双方合作开发开源项目",
-    "status": "active",
-    "reward": "项目上线后一起庆祝",
-    "createdAt": "2026-06-01",
-    "updatedAt": "2026-06-15",
-    "signedAt": null,
-    "parties": [
-      { "id": "u1", "name": "张三", "role": "promisor", "signedAt": "2026-06-01" },
-      { "id": "u2", "name": "李四", "role": "promisee", "signedAt": "2026-06-01" }
-    ],
-    "clauses": [
-      { "id": "cl1", "content": "每周提交代码", "status": "pending", "dueDate": "2026-07-01" }
-    ]
-  }
-]
-```
-
-### `GET /api/contracts/:id`
-
-获取单个契约详情。
-
-**响应 200** — `Contract`  
-**响应 404** — 契约不存在
-
-### `POST /api/contracts`
-
-创建新契约。
-
-**请求体**
-
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `title` | string | 是 | 契约标题 |
-| `parties` | Party[] | 是 | 至少一个参与方 |
-| `clauses` | ClauseInput[] | 是 | 至少一条条款 |
-| `description` | string | 否 | 描述 |
-| `reward` | string | 否 | 约定奖励 |
-
-**Party 结构**
-
-```json
-{ "id": "u1", "name": "张三", "role": "promisor" }
-```
-
-`role`: `"promisor"` | `"promisee"` | `"both"`
-
-**ClauseInput 结构**
-
-```json
-{ "content": "每周提交代码", "dueDate": "2026-07-01" }
-```
-
-**响应 201** — 创建的 `Contract`（状态为 `active`）  
-**响应 400** — 缺少必填字段
-
-### `PATCH /api/contracts/:id`
-
-更新契约基本信息。
-
-**请求体**
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `title` | string | 标题 |
-| `description` | string | 描述 |
-| `status` | ContractStatus | 状态 |
-| `reward` | string | 奖励 |
-
-**ContractStatus**: `"draft"` | `"active"` | `"completed"` | `"breached"` | `"cancelled"`
-
-**自动行为**：
-- `status` 变为 `completed` → 参与用户 `fulfilled_contracts` +1，信任分 +10
-- `status` 变为 `breached` → 参与用户 `breached_contracts` +1，信任分 -15
-
-**响应 200** — 更新后的 `Contract`
-
-### `PATCH /api/contracts/:id/clauses/:clauseId`
-
-更新单条条款状态。
-
-**请求体**
-
-```json
-{ "status": "fulfilled" }
-```
-
-**自动行为**：
-- 所有条款均为 `fulfilled` → 契约自动标记为 `completed`
-- 任一条款为 `breached` → 契约自动标记为 `breached`
-- 同步更新参与用户的信任分
-
-**响应 200** — 更新后的 `Contract`（含最新条款状态）
-
-### `DELETE /api/contracts/:id`
-
-删除契约（级联删除参与方和条款）。
-
-**响应 204** — 无内容
+标准 CRUD：`GET/POST /api/pledges`，`GET/PATCH/DELETE /api/pledges/:id`。  
+归属当前用户（`user_id`）。
 
 ---
 
-## 承诺 Pledges
-
-### `GET /api/pledges`
-
-获取所有承诺，按创建时间倒序。
-
-**响应 200** — `Pledge[]`
-
-### `GET /api/pledges/:id`
-
-获取单个承诺。
-
-**响应 200** — `Pledge`  
-**响应 404** — 承诺不存在
-
-### `POST /api/pledges`
-
-创建新承诺。
-
-**请求体**
-
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `title` | string | 是 | 承诺标题 |
-| `description` | string | 否 | 描述 |
-| `maker` | string | 否 | 承诺人，默认 `"anonymous"` |
-| `deadline` | string | 否 | 截止日期 |
-
-**响应 201** — 创建的 `Pledge`
-
-### `PATCH /api/pledges/:id`
-
-更新承诺。
-
-**请求体**
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `title` | string | 标题 |
-| `description` | string | 描述 |
-| `status` | string | `"active"` | `"fulfilled"` | `"broken"` |
-| `deadline` | string | 截止日期 |
-
-**响应 200** — 更新后的 `Pledge`
-
-### `DELETE /api/pledges/:id`
-
-删除承诺。
-
-**响应 204** — 无内容
-
----
-
-## 用户 Profile
-
-> 当前仅支持硬编码用户 `u1`（张三）。
+## 个人资料 `/api/profile`
 
 ### `GET /api/profile`
 
-获取当前用户资料。
-
-**响应 200** — `UserProfile`
-
-```json
-{
-  "id": "u1",
-  "name": "张三",
-  "avatar": null,
-  "trustScore": 78,
-  "totalGoals": 8,
-  "achievedGoals": 5,
-  "abandonedGoals": 2,
-  "totalContracts": 24,
-  "fulfilledContracts": 20,
-  "breachedContracts": 1,
-  "bio": "说到做到，对自己诚实。"
-}
-```
+当前用户完整资料。
 
 ### `PATCH /api/profile`
 
-更新用户资料。
-
-**请求体**
-
-| 字段 | 类型 | 说明 |
-|------|------|------|
-| `name` | string | 用户名 |
-| `avatar` | string | 头像 URL |
-| `bio` | string | 个人简介 |
-
-**响应 200** — 更新后的 `UserProfile`
+可更新：`email`、`phone`、`bio`、`avatar`（**不可**改登录用户名 `name`）。  
+邮箱唯一；空字符串视为清空。
 
 ### `GET /api/profile/stats`
 
-获取聚合统计数据（用于首页仪表盘）。
-
-**响应 200** — `Stats`
-
-```json
-{
-  "totalGoals": 4,
-  "achievedGoals": 1,
-  "abandonedGoals": 1,
-  "activeGoals": 2,
-  "totalContracts": 3,
-  "completedContracts": 1,
-  "breachedContracts": 1,
-  "activeContracts": 1,
-  "totalPledges": 3,
-  "fulfilledPledges": 1,
-  "trustScore": 78
-}
-```
+聚合统计。
 
 ---
 
-## 信任分规则
+## 通知 `/api/notifications`
 
-| 事件 | 分数变化 |
-|------|----------|
-| 基础分 | 50 |
-| 目标达成 | +5 |
-| 目标放弃 | -5 |
-| 契约完成 | +10 |
-| 契约违约 | -15 |
-
-分数范围：0 ~ 100。
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/notifications` | 列表 |
+| GET | `/api/notifications/unread-count` | `{ count }` |
+| PATCH | `/api/notifications/:id/read` | 单条已读 |
+| PATCH | `/api/notifications/read-all` | 全部已读 |
 
 ---
 
-## 错误码
+## AI `/api/ai`
 
-| HTTP 状态码 | 场景 |
-|-------------|------|
-| 200 | 成功 |
-| 201 | 创建成功 |
-| 204 | 删除成功（无响应体） |
-| 400 | 请求参数错误 |
-| 404 | 资源不存在 |
-| 404 | 未知路由（`{ "error": "Not found" }`） |
+### `POST /api/ai/parse`
+
+需鉴权。Body：`{ "text": "自然语言描述", "mode?": "goal"|"contract" }`  
+返回结构化字段供创建页填表。无 `OPENAI_API_KEY` 时走本地规则解析。
 
 ---
 
-## 前端联调示例
+## 前端调用约定
 
-在 `apps/web/src/lib/api.ts` 中封装 API 调用（待实现）：
+- `apps/web/src/lib/api.ts`：`apiFetch`、`setToken` / `clearToken`  
+- `apps/web/src/lib/api-client.ts`：按资源封装的方法  
 
-```typescript
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"
+联调示例：
 
-export async function fetchGoals(): Promise<Goal[]> {
-  const res = await fetch(`${API_URL}/api/goals`)
-  if (!res.ok) throw new Error("Failed to fetch goals")
-  return res.json()
-}
+```bash
+# 注册
+curl -s -X POST http://localhost:4000/api/auth/register \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"测试用户","password":"password123","confirmPassword":"password123"}'
 
-export async function createGoal(input: CreateGoalInput): Promise<Goal> {
-  const res = await fetch(`${API_URL}/api/goals`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  })
-  if (!res.ok) throw new Error("Failed to create goal")
-  return res.json()
-}
+# 带 token 拉目标
+curl -s http://localhost:4000/api/goals -H "Authorization: Bearer $TOKEN"
 ```
