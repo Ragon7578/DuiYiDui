@@ -91,18 +91,18 @@ F3              ████  ★ Web 反馈上线
 
 ### F0 · 1 周
 
-- [ ] 确认执行 [初版.md](../versions/初版.md)，书面：**无盈利、Web 先反馈**  
-- [ ] 域名 + 云主机/PaaS + 托管 Postgres（或托管 SQLite/等价，须可备份）  
-- [ ] 邮件服务商申请（重置密码；试验期可双轨）  
-- [ ] 反馈渠道选定（邮箱 / 问卷 / 微信群 三选一先落地）  
+- [x] 确认执行 [初版.md](../versions/初版.md)，书面：**无盈利、Web 先反馈** → [decisions/2026-kickoff.md](./decisions/2026-kickoff.md)  
+- [ ] 域名 + 云主机/PaaS + 托管库（**人工**；方案与 SQLite 卷备份见 [deployment.md](../deployment.md)）  
+- [x] 邮件服务商申请（重置密码；试验期可双轨）→ **F3 前临时方案已落地**（`EXPOSE_RESET_URL` + `SUPPORT_EMAIL` / 反馈值班）  
+- [x] 反馈渠道选定 → 站内 `/feedback` + `FEEDBACK_ADMIN_KEY` 值班拉取  
 
 ### F1 · 3～4 周
 
-- [ ] API + Web 部署到公网 Staging，HTTPS  
-- [ ] 库迁移或直连托管库；seed 可在 staging 跑  
-- [ ] 注册登录、忘记密码（真发信或明确「联系管理员」临时方案，**不超过 F3**）  
-- [ ] 健康检查；错误日志可查  
-- [ ] 主闭环在 staging 冒烟通过  
+- [ ] API + Web 部署到公网 Staging，HTTPS（**人工挂域**；Compose + [Caddyfile](../../deploy/Caddyfile) 已备）  
+- [x] 库迁移或直连托管库；seed 可在 staging 跑 → 卷持久化 + `npm run backup:db`  
+- [x] 注册登录、忘记密码（真发信或明确「联系管理员」临时方案，**不超过 F3**）  
+- [x] 健康检查；错误日志可查 → `/api/health` + Compose healthcheck  
+- [x] 主闭环在 staging 冒烟通过 → 本地/`API_URL`：`npm run smoke`（公网待挂）
 
 ### F2 · 3～4 周（可与 F1 后半并行）
 
