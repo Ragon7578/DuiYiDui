@@ -176,6 +176,31 @@ Body：`{ "token", "password", "confirmPassword?" }`
 
 ---
 
+## 意见反馈 `/api/feedback`
+
+### `POST /api/feedback`
+
+公开（可匿名）或可选登录。限流。Body：
+
+```json
+{ "message": "至少 5 字", "contact": "可选联系方式" }
+```
+
+### `GET /api/feedback`（运营）
+
+导出站内反馈，供整理后发给项目经理。  
+
+请求头：`X-Feedback-Ops-Key: <FEEDBACK_OPS_KEY>`  
+Query：`limit`（默认 100）、`since`（ISO/`YYYY-MM-DD`，可选）
+
+```json
+{ "count": 1, "items": [{ "id": "...", "userId": "...", "userName": "...", "contact": null, "message": "...", "createdAt": "..." }] }
+```
+
+整理脚本：`./scripts/feedback-digest.sh` → `docs/roadmap/feedback/digests/*-pm-brief.md`
+
+---
+
 ## 前端调用约定
 
 - `apps/web/src/lib/api.ts`：`apiFetch`、`setToken` / `clearToken`  

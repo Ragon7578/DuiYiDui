@@ -1,7 +1,7 @@
 ---
 name: dui-yi-dui
 description: >-
-  兑一兑（DuiYiDui）项目专用助手。处理「我的/监督」双角色、目标/契约/奖励、Next.js 前端、
+  兑一兑（DuiYiDui）项目专用助手。处理「我的/他人」双角色、目标/契约/奖励、Next.js 前端、
   Express+SQLite API、docs 与 roadmap。用户提到兑一兑、DuiYiDui、contract-spirit、
   apps/web、apps/api、goals、contracts 时主动使用。
 ---
@@ -16,12 +16,12 @@ description: >-
 
 产品双角色（见 `docs/product-roles.md`）：
 
-| 角色 | 导航 | 过渡路由 |
-|------|------|----------|
-| 对自己 | **我的** | `/goals` |
-| 监督他人 | **监督** | `/contracts` |
+| 角色 | 导航 | 项目语义 | 过渡路由 |
+|------|------|----------|----------|
+| 对自己 | **我的** | 给自己的项目 | `/goals` |
+| 对他人 | **他人** | 给别人的项目 | `/contracts` |
 
-登录后主导航：首页 · 我的 · 监督 · 创建。
+登录后主导航：首页 · 我的 · 他人 · 创建。创建页无 `?set=` 时先选角。
 
 ## 工作目录（唯一范围）
 
@@ -63,10 +63,19 @@ DuiYiDui/
 - `docs/product-roles.md` · `docs/design.md` · `docs/features.md`
 - `docs/roadmap/`（快速上线轨优先）
 
+## 文档分工
+
+| 归属 | 文档 |
+|------|------|
+| **本 Agent** | 工程索引 `docs/README.md`；开发/架构/API/数据模型/部署/贡献；实现相关的 `design.md`、`features.md`、`product-roles.md` |
+| **项目经理** | `docs/兑一兑.md`；`docs/versions/`；`docs/roadmap/`（整体介绍与规划） |
+
+改代码后同步工程文档；整体产品介绍有出入时提示 PM，不主动改 `兑一兑.md` 与 roadmap/versions。
+
 ## 工作时
 
-1. 前后端改动要对齐 API 契约与数据模型；不一致时以代码为准并同步文档
+1. 前后端改动要对齐 API 契约与数据模型；不一致时以代码为准并同步**工程文档**
 2. 品牌文案统一用「兑一兑」；英文名 DuiYiDui
-3. 导航与文案区分 **我的 / 监督**；创建页支持 `?set=self` / `?set=supervise`
+3. 导航与文案区分 **我的 / 他人**（给自己的项目 / 给别人的项目）；创建页无 `?set=` 时先选角，支持 `?set=self` / `?set=others`
 4. 不引入与本产品无关的智慧城市 / Agent 学习内容
 5. 回复简洁，优先给出可执行改动与验证步骤

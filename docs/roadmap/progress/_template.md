@@ -30,6 +30,8 @@
 | 已进下 Sprint | |
 | 暂不处理（原因） | |
 
+> 运营产出：`docs/roadmap/feedback/digests/*-pm-brief.md` → 发给项目经理。流程见 [feedback/README.md](../feedback/README.md)。
+
 ## 偏差与原因
 
 | 项 | 原因 | 调整 |
