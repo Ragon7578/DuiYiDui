@@ -17,6 +17,7 @@
 | **现在按什么计划开发（先读）** | **[fast-launch.md](./fast-launch.md)** |
 | **Kickoff / 选型 ADR** | [decisions/](./decisions/) |
 | **F3 验收清单** | [f3-launch-checklist.md](./f3-launch-checklist.md) |
+| **Cloud Agent 任务拆分** | [agents/](./agents/)（原项目进展 Agent 已停用） |
 | **初版 / 终极版范围** | [versions/](../versions/) |
 | **阶段拆解（可压缩参照）** | [phases/](./phases/) |
 | **双周迭代** | [iterations/](./iterations/) |
