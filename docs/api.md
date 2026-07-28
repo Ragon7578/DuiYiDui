@@ -8,8 +8,9 @@ Content-Type：`application/json`
 
 | 类型 | 说明 |
 |------|------|
-| 公开 | `GET /api/health`；`POST /api/auth/register`、`login`、`forgot-password`、`reset-password` |
+| 公开 | `GET /api/health`；`POST /api/auth/register`、`login`、`forgot-password`、`reset-password`；`POST /api/feedback`；`POST /api/events` |
 | 需登录 | 其余业务接口 |
+| 值班密钥 | `GET /api/feedback`（`X-Feedback-Admin-Key`） |
 
 请求头：
 
@@ -61,12 +62,14 @@ Body：`{ "username", "password" }`（亦兼容 `name`）
 ### `POST /api/auth/forgot-password`
 
 Body：`{ "email" }`  
-**200** → `{ "message": "...", "resetUrl?": "http://localhost:3000/reset-password?token=..." }`  
-说明：试验环境可带 `resetUrl`；未绑定邮箱时仍返回通用文案（不暴露是否存在）。
+限流：约 5 次/分钟。  
+**200** → `{ "message": "...", "resetUrl?": "..." }`  
+说明：仅当 `EXPOSE_RESET_URL=true`（或非 production 且未显式关闭）时带 `resetUrl`；生产默认关闭。未绑定邮箱时仍返回通用文案（不暴露是否存在）。服务端始终记日志。
 
 ### `POST /api/auth/reset-password`
 
 Body：`{ "token", "password", "confirmPassword?" }`  
+限流：约 10 次/分钟。  
 **200** → `{ "message": "..." }`
 
 ### `GET /api/auth/me`
@@ -176,28 +179,31 @@ Body：`{ "token", "password", "confirmPassword?" }`
 
 ---
 
-## 意见反馈 `/api/feedback`
+## 反馈 `/api/feedback`
 
 ### `POST /api/feedback`
 
-公开（可匿名）或可选登录。限流。Body：
+可匿名（有 token 则记 `user_id`）。Body：`{ "message", "contact?" }`（`message` 5–2000 字）。  
+限流：约 8 次/分钟。  
+**201** → `{ "id", "message" }`
 
-```json
-{ "message": "至少 5 字", "contact": "可选联系方式" }
-```
+### `GET /api/feedback`
 
-### `GET /api/feedback`（运营）
-
-导出站内反馈，供整理后发给总负责人。  
-
-请求头：`X-Feedback-Ops-Key: <FEEDBACK_OPS_KEY>`  
-Query：`limit`（默认 100）、`since`（ISO/`YYYY-MM-DD`，可选）
-
-```json
-{ "count": 1, "items": [{ "id": "...", "userId": "...", "userName": "...", "contact": null, "message": "...", "createdAt": "..." }] }
-```
+值班读取。Header：`X-Feedback-Admin-Key: <FEEDBACK_ADMIN_KEY>`（或 `?key=`）。  
+Query：`limit`（默认 50，最大 200）、`since`（ISO / `YYYY-MM-DD`，可选，仅返回该时间之后的反馈）。  
+**200** → `{ "items": [{ "id", "userId", "userName?", "contact", "message", "createdAt" }], "count" }`  
+未配置密钥 → **503**。
 
 整理脚本：`./scripts/feedback-digest.sh` → `docs/roadmap/feedback/digests/*-pm-brief.md`
+
+---
+
+## 事件埋点 `/api/events`
+
+### `POST /api/events`
+
+Body：`{ "name": "register"|"create_goal"|… , "props?" }`  
+用于注册、建目标、兑奖、提交反馈等计数；具体事件名见前端 `apps/web/src/lib/analytics.ts`。
 
 ---
 

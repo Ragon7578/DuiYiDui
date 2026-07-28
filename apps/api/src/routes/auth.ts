@@ -107,12 +107,38 @@ router.post(
 })
 
 /**
- * 忘记密码：通过已绑定的邮箱找回。
- * 试验环境不真正发邮件，返回 resetUrl 供前端展示。
+ * 是否在响应中暴露 resetUrl。
+ * 生产默认关闭（改发邮件或走人工值班）；本地 / 显式 EXPOSE_RESET_URL=true 时开启。
  */
-router.post("/forgot-password", (req, res) => {
+function shouldExposeResetUrl(): boolean {
+  const flag = process.env.EXPOSE_RESET_URL
+  if (flag === "true" || flag === "1") return true
+  if (flag === "false" || flag === "0") return false
+  return process.env.NODE_ENV !== "production"
+}
+
+function forgotPasswordMessage(exposeUrl: boolean): string {
+  const support = (process.env.SUPPORT_EMAIL || "").trim()
+  if (exposeUrl) {
+    return "如果该邮箱已绑定账号，请使用下方链接重置密码（有效期 30 分钟）"
+  }
+  if (support) {
+    return `如果该邮箱已绑定账号，重置说明已记录。正式邮件接入前，请联系值班邮箱 ${support} 协助重置（工作日 48 小时内回复）。`
+  }
+  return "如果该邮箱已绑定账号，重置请求已记录。正式邮件接入前，请通过「意见反馈」联系值班协助重置。"
+}
+
+/**
+ * 忘记密码：通过已绑定的邮箱找回。
+ * 默认不发邮件；试验/显式开关下可返回 resetUrl；生产应关开关并看服务端日志或人工值班。
+ */
+router.post(
+  "/forgot-password",
+  rateLimit({ windowMs: 60_000, max: 5 }),
+  (req, res) => {
   const db = getDb()
   const email = String(req.body.email || "").trim().toLowerCase()
+  const exposeUrl = shouldExposeResetUrl()
 
   if (!email || !EMAIL_RE.test(email)) {
     res.status(400).json({ error: "请输入有效邮箱" })
@@ -120,9 +146,7 @@ router.post("/forgot-password", (req, res) => {
   }
 
   const row = db.prepare("SELECT * FROM users WHERE email = ?").get(email) as any
-  const generic = {
-    message: "如果该邮箱已绑定账号，请使用下方链接重置密码（有效期 30 分钟）",
-  }
+  const generic = { message: forgotPasswordMessage(exposeUrl) }
 
   if (!row?.password_hash) {
     // 不暴露邮箱是否存在
@@ -139,13 +163,13 @@ router.post("/forgot-password", (req, res) => {
   const resetUrl = `${APP_URL}/reset-password?token=${token}`
   console.log(`[password-reset] ${email} → ${resetUrl}`)
 
-  res.json({
-    ...generic,
-    resetUrl, // 试验功能：直接返回链接，正式环境应改为发邮件
-  })
+  res.json(exposeUrl ? { ...generic, resetUrl } : generic)
 })
 
-router.post("/reset-password", (req, res) => {
+router.post(
+  "/reset-password",
+  rateLimit({ windowMs: 60_000, max: 10 }),
+  (req, res) => {
   const db = getDb()
   const token = String(req.body.token || "").trim()
   const password = String(req.body.password || "")

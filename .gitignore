@@ -8,6 +8,9 @@ apps/*/node_modules/
 apps/api/data/
 apps/api/dist/
 
+# sqlite backups
+backups/
+
 # frontend
 apps/web/.next/
 apps/web/out/

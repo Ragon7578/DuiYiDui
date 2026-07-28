@@ -70,6 +70,9 @@ apps/
 | `PORT` | `4000` | 监听端口 |
 | `JWT_SECRET` | 开发默认字符串 | **生产必须改** |
 | `APP_URL` | `http://localhost:3000` | 密码重置链接前缀 |
+| `EXPOSE_RESET_URL` | 非 production 默认开 | 生产建议 `false` |
+| `SUPPORT_EMAIL` | 空 | 人工重置文案 |
+| `FEEDBACK_ADMIN_KEY` | 空 | 列出反馈所需 |
 | `OPENAI_API_KEY` | 空 | 可选；有则增强 `/api/ai/parse` |
 | `OPENAI_MODEL` | `gpt-4o-mini` | 可选模型名 |
 
@@ -123,6 +126,8 @@ npm run build -w @contract-spirit/api
 | `/notifications` | 通知 |
 | `/login` `/register` | 登录注册 |
 | `/forgot-password` `/reset-password` | 找回 / 重置密码 |
+| `/feedback` | 意见反馈 |
+| `/privacy` `/terms` | 隐私政策 / 用户协议 |
 
 受保护页通过 `AuthGuard` + `AuthProvider` 控制。
 
@@ -145,7 +150,10 @@ mvn -pl core-service -am spring-boot:run
 API 用 `PORT`；Web 用 Next 默认 3000，并同步改 `NEXT_PUBLIC_API_URL` 与 `APP_URL`。
 
 **忘记密码在本地怎么测？**  
-先在「我的」绑定邮箱 → 忘记密码 → 试验环境响应里带 `resetUrl`（并打服务端日志）。
+先在「我的」绑定邮箱 → 忘记密码 → 非 production / `EXPOSE_RESET_URL=true` 时响应带 `resetUrl`（并打服务端日志）。生产关闭明文链接后走 `SUPPORT_EMAIL` / 意见反馈值班。
+
+**主闭环冒烟？**  
+`npm run smoke`（需 API 已启动）。带 `FEEDBACK_ADMIN_KEY` 时会顺带测列表接口。
 
 **seed 后登录不了？**  
 确认用的是 seed 用户名（`name` 字段），不是邮箱；密码以 seed 脚本为准。

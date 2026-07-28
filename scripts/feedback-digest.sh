@@ -2,7 +2,7 @@
 # 导出站内反馈并生成「给总负责人的任务简报」
 # 优先走 API；若 API 不可用则直读 SQLite（DB_PATH）。
 #
-#   FEEDBACK_OPS_KEY=... ./scripts/feedback-digest.sh
+#   FEEDBACK_ADMIN_KEY=... ./scripts/feedback-digest.sh
 #   DB_PATH=./apps/api/data/contract-spirit.db ./scripts/feedback-digest.sh
 #   SINCE=2026-07-01 ./scripts/feedback-digest.sh
 set -euo pipefail
