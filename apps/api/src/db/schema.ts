@@ -2,36 +2,54 @@ import { DatabaseSync } from "node:sqlite"
 import path from "node:path"
 import fs from "node:fs"
 
-const DB_PATH = process.env.DB_PATH
-  ? path.resolve(process.env.DB_PATH)
-  : path.resolve(__dirname, "..", "..", "data", "contract-spirit.db")
+function resolveDbPath(): string {
+  if (process.env.DB_PATH === ":memory:") return ":memory:"
+  return process.env.DB_PATH
+    ? path.resolve(process.env.DB_PATH)
+    : path.resolve(__dirname, "..", "..", "data", "contract-spirit.db")
+}
 
-let db: DatabaseSync
+let db: DatabaseSync | undefined
 
 export function getDb(): DatabaseSync {
   if (!db) {
-    const dir = path.dirname(DB_PATH)
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true })
+    const dbPath = resolveDbPath()
+    if (dbPath !== ":memory:") {
+      const dir = path.dirname(dbPath)
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true })
+      }
     }
-    db = new DatabaseSync(DB_PATH)
-    console.log(`[db] using ${DB_PATH}`)
-    db.exec("PRAGMA journal_mode=WAL")
+    db = new DatabaseSync(dbPath)
+    if (process.env.NODE_ENV !== "test") {
+      console.log(`[db] using ${dbPath}`)
+    }
+    if (dbPath !== ":memory:") {
+      db.exec("PRAGMA journal_mode=WAL")
+    }
     db.exec("PRAGMA foreign_keys=ON")
     initSchema()
   }
   return db
 }
 
+/** 关闭连接，便于测试切换临时库 */
+export function closeDb(): void {
+  if (db) {
+    db.close()
+    db = undefined
+  }
+}
+
 function tableExists(name: string): boolean {
-  const row = db
+  const row = db!
     .prepare("SELECT 1 AS ok FROM sqlite_master WHERE type = 'table' AND name = ?")
     .get(name) as { ok: number } | undefined
   return Boolean(row)
 }
 
 function initSchema() {
-  db.exec(`
+  db!.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -160,31 +178,51 @@ function initSchema() {
 }
 
 function migrateSchema() {
-  const userCols = db.prepare("PRAGMA table_info(users)").all() as { name: string }[]
+  const userCols = db!.prepare("PRAGMA table_info(users)").all() as { name: string }[]
   const names = new Set(userCols.map((c) => c.name))
 
   if (!names.has("email")) {
-    db.exec("ALTER TABLE users ADD COLUMN email TEXT")
+    db!.exec("ALTER TABLE users ADD COLUMN email TEXT")
   }
   if (!names.has("password_hash")) {
-    db.exec("ALTER TABLE users ADD COLUMN password_hash TEXT")
+    db!.exec("ALTER TABLE users ADD COLUMN password_hash TEXT")
   }
   if (!names.has("phone")) {
-    db.exec("ALTER TABLE users ADD COLUMN phone TEXT")
+    db!.exec("ALTER TABLE users ADD COLUMN phone TEXT")
   }
   if (!names.has("password_reset_token")) {
-    db.exec("ALTER TABLE users ADD COLUMN password_reset_token TEXT")
+    db!.exec("ALTER TABLE users ADD COLUMN password_reset_token TEXT")
   }
   if (!names.has("password_reset_expires")) {
-    db.exec("ALTER TABLE users ADD COLUMN password_reset_expires TEXT")
+    db!.exec("ALTER TABLE users ADD COLUMN password_reset_expires TEXT")
+  }
+  if (!names.has("supervise_unlocked_at")) {
+    db!.exec("ALTER TABLE users ADD COLUMN supervise_unlocked_at TEXT")
+    const required = Number(process.env.SUPERVISE_UNLOCK_REQUIRED || "3")
+    db!.prepare(
+      `UPDATE users SET supervise_unlocked_at = datetime('now')
+       WHERE supervise_unlocked_at IS NULL
+         AND (total_contracts > 0 OR achieved_goals >= ?)`
+    ).run(required)
   }
 
-  const pledgeCols = db.prepare("PRAGMA table_info(pledges)").all() as { name: string }[]
+  const pledgeCols = db!.prepare("PRAGMA table_info(pledges)").all() as { name: string }[]
   if (!pledgeCols.some((c) => c.name === "user_id")) {
-    db.exec("ALTER TABLE pledges ADD COLUMN user_id TEXT")
+    db!.exec("ALTER TABLE pledges ADD COLUMN user_id TEXT")
   }
 
   migrateLegacyDomainTables()
+  ensureIndexes()
+}
+
+function ensureIndexes() {
+  db!.exec(`
+    CREATE INDEX IF NOT EXISTS idx_self_commitments_owner ON self_commitments(owner_user_id);
+    CREATE INDEX IF NOT EXISTS idx_supervise_parties_user ON supervise_parties(user_id);
+    CREATE INDEX IF NOT EXISTS idx_supervise_parties_agreement ON supervise_parties(agreement_id);
+    CREATE INDEX IF NOT EXISTS idx_supervise_witnesses_commitment ON supervise_witnesses(commitment_id);
+    CREATE INDEX IF NOT EXISTS idx_supervise_witnesses_user ON supervise_witnesses(witness_user_id);
+  `)
 }
 
 /** 将旧 goals/contracts/parties/clauses/goal_witnesses 迁入 Self / Supervise 表后删除旧表 */
@@ -197,11 +235,11 @@ function migrateLegacyDomainTables() {
   }
 
   const selfCount = (
-    db.prepare("SELECT COUNT(*) AS n FROM self_commitments").get() as { n: number }
+    db!.prepare("SELECT COUNT(*) AS n FROM self_commitments").get() as { n: number }
   ).n
 
   if (hasLegacyGoals && selfCount === 0) {
-    db.exec(`
+    db!.exec(`
       INSERT INTO self_commitments (
         id, owner_user_id, title, description, reward, reward_claimed,
         deadline, status, progress, created_at, achieved_at
@@ -216,10 +254,10 @@ function migrateLegacyDomainTables() {
 
   if (hasLegacyContracts) {
     const agreeCount = (
-      db.prepare("SELECT COUNT(*) AS n FROM supervise_agreements").get() as { n: number }
+      db!.prepare("SELECT COUNT(*) AS n FROM supervise_agreements").get() as { n: number }
     ).n
     if (agreeCount === 0) {
-      db.exec(`
+      db!.exec(`
         INSERT INTO supervise_agreements (
           id, created_by_user_id, title, description, status, reward,
           created_at, updated_at, signed_at
@@ -239,7 +277,7 @@ function migrateLegacyDomainTables() {
       `)
 
       if (tableExists("parties")) {
-        db.exec(`
+        db!.exec(`
           INSERT OR IGNORE INTO supervise_parties (
             agreement_id, user_id, display_name, role, signed_at
           )
@@ -250,7 +288,7 @@ function migrateLegacyDomainTables() {
       }
 
       if (tableExists("clauses")) {
-        db.exec(`
+        db!.exec(`
           INSERT INTO supervise_clauses (id, agreement_id, content, status, due_date)
           SELECT id, contract_id, content, status, due_date FROM clauses
         `)
@@ -261,10 +299,10 @@ function migrateLegacyDomainTables() {
 
   if (tableExists("goal_witnesses")) {
     const wCount = (
-      db.prepare("SELECT COUNT(*) AS n FROM supervise_witnesses").get() as { n: number }
+      db!.prepare("SELECT COUNT(*) AS n FROM supervise_witnesses").get() as { n: number }
     ).n
     if (wCount === 0) {
-      db.exec(`
+      db!.exec(`
         INSERT INTO supervise_witnesses (
           id, commitment_id, witness_user_id, status, invited_at, confirmed_at
         )
@@ -280,7 +318,7 @@ function migrateLegacyDomainTables() {
   }
 
   // 旧表不再使用；DROP 顺序注意 FK
-  db.exec("PRAGMA foreign_keys=OFF")
+  db!.exec("PRAGMA foreign_keys=OFF")
   for (const name of [
     "goal_witnesses",
     "clauses",
@@ -289,9 +327,9 @@ function migrateLegacyDomainTables() {
     "goals",
   ]) {
     if (tableExists(name)) {
-      db.exec(`DROP TABLE IF EXISTS ${name}`)
+      db!.exec(`DROP TABLE IF EXISTS ${name}`)
       console.log(`[db] dropped legacy table ${name}`)
     }
   }
-  db.exec("PRAGMA foreign_keys=ON")
+  db!.exec("PRAGMA foreign_keys=ON")
 }

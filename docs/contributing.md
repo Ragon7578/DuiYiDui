@@ -5,9 +5,11 @@
 1. Fork / Clone 仓库（Gitee 或 GitHub）  
 2. `npm install && npm run seed && npm run dev`  
 3. 新建分支开发  
-4. 自测前后端（需登录态的接口带 JWT）  
+4. 自测前后端（需登录态的接口带 JWT）；跑 `npm test`  
 5. 提交前 `npm run lint`（前端）  
 6. 开 PR / MR，说明动机与测试方式  
+
+回归用例与发版核对清单见 [testing.md](testing.md)。 
 
 ## 代码约定
 

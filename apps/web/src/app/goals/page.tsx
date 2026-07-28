@@ -10,12 +10,14 @@ import {
   updateGoal,
   claimReward,
   addGoalWitness,
-  fetchUsers,
 } from "@/lib/api-client"
 import { track } from "@/lib/analytics"
 import { formatDate } from "@/lib/utils"
-import type { Goal, GoalWitness, AuthUser } from "@/lib/types"
+import { useOtherUsers } from "@/lib/use-other-users"
+import { UserSelect } from "@/components/users/user-select"
 import Link from "next/link"
+import type { Goal, GoalWitness } from "@/lib/types"
+import { ROLES } from "@/lib/roles"
 
 export default function GoalsPage() {
   return (
@@ -41,10 +43,10 @@ function GoalsContent() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl font-black tracking-tight">我的</h1>
-          <p className="mt-1 text-sm text-muted">对自己的承诺 · 做到了，兑一兑</p>
+          <h1 className="font-display text-3xl font-black tracking-tight">{ROLES.self.navLabel}</h1>
+          <p className="mt-1 text-sm text-muted">{ROLES.self.projectLabel} · 做到了，兑一兑</p>
         </div>
-        <Link href="/create?set=self" className="btn-primary px-4 py-2 text-sm">
+        <Link href={ROLES.self.createHref} className="btn-primary px-4 py-2 text-sm">
           创建
         </Link>
       </div>
@@ -65,7 +67,7 @@ function GoalsContent() {
             <p className="mt-2 text-sm text-muted">
               写下一件要对得起自己的事，并想好奖励。
             </p>
-            <Link href="/create?set=self" className="btn-primary mt-4 inline-block px-4 py-2 text-sm">
+            <Link href={ROLES.self.createHref} className="btn-primary mt-4 inline-block px-4 py-2 text-sm">
               写下第一条「我的」承诺
             </Link>
           </div>
@@ -77,16 +79,16 @@ function GoalsContent() {
 
 function GoalCard({ goal, onUpdate }: { goal: Goal; onUpdate: (g: Goal) => void }) {
   const [witnesses, setWitnesses] = useState<GoalWitness[]>([])
-  const [users, setUsers] = useState<AuthUser[]>([])
   const [witnessId, setWitnessId] = useState("")
   const [busy, setBusy] = useState(false)
+  const users = useOtherUsers([
+    ...(goal.userId ? [goal.userId] : []),
+    ...witnesses.map((w) => w.witnessUserId).filter(Boolean) as string[],
+  ])
 
   useEffect(() => {
     fetchGoalWitnesses(goal.id).then(setWitnesses).catch(() => {})
-    fetchUsers()
-      .then((list) => setUsers(list.filter((u) => u.id !== goal.userId)))
-      .catch(() => {})
-  }, [goal.id, goal.userId])
+  }, [goal.id])
 
   async function handleProgress(delta: number) {
     const progress = Math.min(100, Math.max(0, goal.progress + delta))
@@ -219,16 +221,13 @@ function GoalCard({ goal, onUpdate }: { goal: Goal; onUpdate: (g: Goal) => void 
                 </div>
               )}
               <div className="flex gap-2">
-                <select
+                <UserSelect
                   value={witnessId}
-                  onChange={(e) => setWitnessId(e.target.value)}
+                  onChange={setWitnessId}
+                  users={users}
+                  placeholder="选择见证人"
                   className="flex-1 rounded-lg border border-gray-300 px-2 py-1 text-sm"
-                >
-                  <option value="">选择见证人</option>
-                  {users.map((u) => (
-                    <option key={u.id} value={u.id}>{u.name}</option>
-                  ))}
-                </select>
+                />
                 <button
                   onClick={handleAddWitness}
                   disabled={busy || !witnessId}

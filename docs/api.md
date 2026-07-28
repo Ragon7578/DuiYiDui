@@ -188,7 +188,7 @@ Body：`{ "token", "password", "confirmPassword?" }`
 
 ### `GET /api/feedback`（运营）
 
-导出站内反馈，供整理后发给项目经理。  
+导出站内反馈，供整理后发给总负责人。  
 
 请求头：`X-Feedback-Ops-Key: <FEEDBACK_OPS_KEY>`  
 Query：`limit`（默认 100）、`since`（ISO/`YYYY-MM-DD`，可选）

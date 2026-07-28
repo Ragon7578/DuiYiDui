@@ -3,27 +3,14 @@ import { getDb } from "../db/schema.js"
 import { requireAuth } from "../middleware/auth.js"
 import { checkDeadlineNotifications } from "../services/notifications.js"
 import type { UserProfile, Stats } from "../types.js"
+import { enrichUserProfile, applySuperviseUnlock } from "../services/user-profile.js"
 
 const router = Router()
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const PHONE_RE = /^1\d{10}$|^(\+?\d{6,15})$/
 
-function rowToProfile(row: any): UserProfile {
-  return {
-    id: row.id,
-    name: row.name,
-    email: row.email || null,
-    phone: row.phone || null,
-    avatar: row.avatar,
-    trustScore: row.trust_score,
-    totalGoals: row.total_goals,
-    achievedGoals: row.achieved_goals,
-    abandonedGoals: row.abandoned_goals,
-    totalContracts: row.total_contracts,
-    fulfilledContracts: row.fulfilled_contracts,
-    breachedContracts: row.breached_contracts,
-    bio: row.bio,
-  }
+function rowToProfile(row: Record<string, unknown>): UserProfile {
+  return enrichUserProfile(row)
 }
 
 router.get("/", requireAuth, (req, res) => {
@@ -98,18 +85,18 @@ router.get("/stats", requireAuth, (req, res) => {
       SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active,
       SUM(CASE WHEN status = 'achieved' OR status = 'reward_claimed' THEN 1 ELSE 0 END) as achieved,
       SUM(CASE WHEN status = 'abandoned' THEN 1 ELSE 0 END) as abandoned
-    FROM goals WHERE user_id = ?
+    FROM self_commitments WHERE owner_user_id = ?
   `).get(userId) as any
 
   const contractCounts = db.prepare(`
     SELECT
-      COUNT(DISTINCT c.id) as total,
-      SUM(CASE WHEN c.status = 'active' THEN 1 ELSE 0 END) as active,
-      SUM(CASE WHEN c.status = 'completed' THEN 1 ELSE 0 END) as completed,
-      SUM(CASE WHEN c.status = 'breached' THEN 1 ELSE 0 END) as breached
-    FROM contracts c
-    JOIN parties p ON p.contract_id = c.id
-    WHERE p.id = ?
+      COUNT(DISTINCT a.id) as total,
+      SUM(CASE WHEN a.status = 'active' THEN 1 ELSE 0 END) as active,
+      SUM(CASE WHEN a.status = 'completed' THEN 1 ELSE 0 END) as completed,
+      SUM(CASE WHEN a.status = 'breached' THEN 1 ELSE 0 END) as breached
+    FROM supervise_agreements a
+    JOIN supervise_parties p ON p.agreement_id = a.id
+    WHERE p.user_id = ?
   `).get(userId) as any
 
   const pledgeCounts = db.prepare(`
@@ -134,6 +121,28 @@ router.get("/stats", requireAuth, (req, res) => {
   }
 
   res.json(stats)
+})
+
+/** 申请解锁他人（监督）角色：须先达成足够数量的给自己的项目 */
+router.post("/unlock-supervise", requireAuth, (req, res) => {
+  const result = applySuperviseUnlock(req.user!.userId)
+  if (!result.ok) {
+    res.status(400).json({
+      error: `还需完成 ${result.status.required - result.status.progress} 个给自己的项目才能申请解锁`,
+      code: "SUPERVISE_UNLOCK_INELIGIBLE",
+      required: result.status.required,
+      progress: result.status.progress,
+      eligible: false,
+    })
+    return
+  }
+  const row = getDb()
+    .prepare("SELECT * FROM users WHERE id = ?")
+    .get(req.user!.userId) as Record<string, unknown>
+  res.json({
+    message: "他人角色已解锁，可以创建给别人的项目",
+    user: rowToProfile(row),
+  })
 })
 
 export default router

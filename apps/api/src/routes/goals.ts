@@ -1,82 +1,68 @@
 import { Router } from "express"
 import { getDb } from "../db/schema.js"
+import { toGoal } from "../db/mappers.js"
 import { v4 as uuid } from "uuid"
 import { requireAuth } from "../middleware/auth.js"
 import { param } from "../utils/params.js"
 import { createNotification, notifyGoalAchieved } from "../services/notifications.js"
-import type { Goal, CreateGoalInput, UpdateGoalInput, GoalWitness } from "../types.js"
+import {
+  getCommitmentForOwner,
+  inviteWitness,
+  listCommitmentsForOwner,
+  listWitnesses,
+  notifyConfirmedWitnesses,
+} from "../services/self-commitments.js"
+import { getUserById } from "../services/users.js"
+import type { CreateGoalInput, UpdateGoalInput } from "../types.js"
 
 const router = Router()
 
-/** Self 域：自我承诺（API 路径仍为 /api/goals，响应形状兼容前端 Goal） */
-
 router.get("/", requireAuth, (req, res) => {
-  const db = getDb()
-  const rows = db
-    .prepare(
-      `
-    SELECT * FROM self_commitments WHERE owner_user_id = ? ORDER BY created_at DESC
-  `
-    )
-    .all(req.user!.userId) as any[]
-  res.json(rows.map(rowToGoal))
+  res.json(listCommitmentsForOwner(req.user!.userId))
 })
 
 router.get("/:id", requireAuth, (req, res) => {
-  const db = getDb()
-  const row = db
-    .prepare(
-      `
-    SELECT * FROM self_commitments WHERE id = ? AND owner_user_id = ?
-  `
-    )
-    .get(param(req.params.id), req.user!.userId) as any
+  const row = getCommitmentForOwner(param(req.params.id), req.user!.userId)
   if (!row) {
     res.status(404).json({ error: "Goal not found" })
     return
   }
-  res.json(rowToGoal(row))
+  res.json(toGoal(row))
 })
 
 router.post("/", requireAuth, (req, res) => {
-  const db = getDb()
   const input = req.body as CreateGoalInput
   if (!input.title || !input.reward) {
     res.status(400).json({ error: "title and reward are required" })
     return
   }
+
+  const db = getDb()
   const id = uuid()
   const userId = req.user!.userId
+
   db.prepare(
-    `
-    INSERT INTO self_commitments (id, title, description, reward, deadline, status, progress, owner_user_id)
-    VALUES (?, ?, ?, ?, ?, 'active', 0, ?)
-  `
+    `INSERT INTO self_commitments (id, title, description, reward, deadline, status, progress, owner_user_id)
+     VALUES (?, ?, ?, ?, ?, 'active', 0, ?)`
   ).run(id, input.title, input.description || null, input.reward, input.deadline || null, userId)
   db.prepare("UPDATE users SET total_goals = total_goals + 1 WHERE id = ?").run(userId)
 
   if (input.witnessUserId) {
-    const witness = db
-      .prepare("SELECT name FROM users WHERE id = ?")
-      .get(input.witnessUserId) as { name: string } | undefined
+    const witness = getUserById(input.witnessUserId)
     if (witness) {
-      addWitness(id, input.witnessUserId, userId)
+      const result = inviteWitness(id, witness.userId)
+      if ("error" in result) {
+        // 创建时邀请失败不阻断承诺创建
+      }
     }
   }
 
-  const row = db.prepare("SELECT * FROM self_commitments WHERE id = ?").get(id) as any
-  res.status(201).json(rowToGoal(row))
+  const row = getCommitmentForOwner(id, userId)!
+  res.status(201).json(toGoal(row))
 })
 
 router.patch("/:id", requireAuth, (req, res) => {
-  const db = getDb()
-  const existing = db
-    .prepare(
-      `
-    SELECT * FROM self_commitments WHERE id = ? AND owner_user_id = ?
-  `
-    )
-    .get(param(req.params.id), req.user!.userId) as any
+  const existing = getCommitmentForOwner(param(req.params.id), req.user!.userId)
   if (!existing) {
     res.status(404).json({ error: "Goal not found" })
     return
@@ -84,7 +70,7 @@ router.patch("/:id", requireAuth, (req, res) => {
 
   const input = req.body as UpdateGoalInput
   const sets: string[] = []
-  const params: any[] = []
+  const params: (string | number | null)[] = []
 
   if (input.title !== undefined) {
     sets.push("title = ?")
@@ -118,60 +104,47 @@ router.patch("/:id", requireAuth, (req, res) => {
   if (input.status === "achieved" && existing.status !== "achieved") {
     sets.push("achieved_at = datetime('now')")
   }
-
-  if (input.progress !== undefined && input.progress === 100 && existing.progress !== 100) {
+  if (input.progress === 100 && existing.progress !== 100) {
     sets.push("status = 'achieved'")
     sets.push("achieved_at = datetime('now')")
   }
 
   if (sets.length === 0) {
-    res.json(rowToGoal(existing))
+    res.json(toGoal(existing))
     return
   }
 
   params.push(param(req.params.id))
-  db.prepare(`UPDATE self_commitments SET ${sets.join(", ")} WHERE id = ?`).run(...params)
+  getDb().prepare(`UPDATE self_commitments SET ${sets.join(", ")} WHERE id = ?`).run(...params)
 
   const becameAchieved =
     (input.status === "achieved" && existing.status !== "achieved") ||
     (input.progress === 100 && existing.progress !== 100)
 
   if (becameAchieved) {
-    db.prepare(
-      `
-      UPDATE users SET achieved_goals = achieved_goals + 1, trust_score = MIN(100, trust_score + 5)
-      WHERE id = ?
-    `
-    ).run(existing.owner_user_id)
+    getDb()
+      .prepare(
+        `UPDATE users SET achieved_goals = achieved_goals + 1, trust_score = MIN(100, trust_score + 5) WHERE id = ?`
+      )
+      .run(existing.owner_user_id)
     notifyGoalAchieved(existing.owner_user_id, existing.title, existing.id)
-    notifyWitnesses(existing.id, existing.title, "achieved")
+    notifyConfirmedWitnesses(existing.id, existing.title)
   }
 
   if (input.status === "abandoned" && existing.status !== "abandoned") {
-    db.prepare(
-      `
-      UPDATE users SET abandoned_goals = abandoned_goals + 1, trust_score = MAX(0, trust_score - 5)
-      WHERE id = ?
-    `
-    ).run(existing.owner_user_id)
+    getDb()
+      .prepare(
+        `UPDATE users SET abandoned_goals = abandoned_goals + 1, trust_score = MAX(0, trust_score - 5) WHERE id = ?`
+      )
+      .run(existing.owner_user_id)
   }
 
-  const updated = db
-    .prepare("SELECT * FROM self_commitments WHERE id = ?")
-    .get(param(req.params.id)) as any
-  res.json(rowToGoal(updated))
+  const updated = getCommitmentForOwner(param(req.params.id), req.user!.userId)!
+  res.json(toGoal(updated))
 })
 
 router.post("/:id/claim-reward", requireAuth, (req, res) => {
-  const db = getDb()
-  const existing = db
-    .prepare(
-      `
-    SELECT * FROM self_commitments WHERE id = ? AND owner_user_id = ?
-  `
-    )
-    .get(param(req.params.id), req.user!.userId) as any
-
+  const existing = getCommitmentForOwner(param(req.params.id), req.user!.userId)
   if (!existing) {
     res.status(404).json({ error: "Goal not found" })
     return
@@ -185,10 +158,8 @@ router.post("/:id/claim-reward", requireAuth, (req, res) => {
     return
   }
 
-  db.prepare(
-    `
-    UPDATE self_commitments SET reward_claimed = 1, status = 'reward_claimed' WHERE id = ?
-  `
+  getDb().prepare(
+    `UPDATE self_commitments SET reward_claimed = 1, status = 'reward_claimed' WHERE id = ?`
   ).run(param(req.params.id))
 
   createNotification(
@@ -199,57 +170,32 @@ router.post("/:id/claim-reward", requireAuth, (req, res) => {
     existing.id
   )
 
-  const updated = db
-    .prepare("SELECT * FROM self_commitments WHERE id = ?")
-    .get(param(req.params.id)) as any
-  res.json(rowToGoal(updated))
+  const updated = getCommitmentForOwner(param(req.params.id), req.user!.userId)!
+  res.json(toGoal(updated))
 })
 
 router.get("/:id/witnesses", requireAuth, (req, res) => {
   const db = getDb()
-  const goal = db
+  const access = db
     .prepare(
-      `
-    SELECT c.id FROM self_commitments c
-    WHERE c.id = ?
-      AND (
-        c.owner_user_id = ?
-        OR EXISTS (
-          SELECT 1 FROM supervise_witnesses w
-          WHERE w.commitment_id = c.id AND w.witness_user_id = ?
-        )
-      )
-  `
+      `SELECT c.id FROM self_commitments c
+       WHERE c.id = ?
+         AND (c.owner_user_id = ?
+              OR EXISTS (
+                SELECT 1 FROM supervise_witnesses w
+                WHERE w.commitment_id = c.id AND w.witness_user_id = ?
+              ))`
     )
     .get(param(req.params.id), req.user!.userId, req.user!.userId)
-  if (!goal) {
+  if (!access) {
     res.status(404).json({ error: "Goal not found" })
     return
   }
-
-  const rows = db
-    .prepare(
-      `
-    SELECT w.*, u.name AS witness_name
-    FROM supervise_witnesses w
-    JOIN users u ON u.id = w.witness_user_id
-    WHERE w.commitment_id = ?
-    ORDER BY w.invited_at DESC
-  `
-    )
-    .all(param(req.params.id)) as any[]
-  res.json(rows.map(rowToWitness))
+  res.json(listWitnesses(param(req.params.id)))
 })
 
 router.post("/:id/witnesses", requireAuth, (req, res) => {
-  const db = getDb()
-  const goal = db
-    .prepare(
-      `
-    SELECT * FROM self_commitments WHERE id = ? AND owner_user_id = ?
-  `
-    )
-    .get(param(req.params.id), req.user!.userId) as any
+  const goal = getCommitmentForOwner(param(req.params.id), req.user!.userId)
   if (!goal) {
     res.status(404).json({ error: "Goal not found" })
     return
@@ -260,40 +206,38 @@ router.post("/:id/witnesses", requireAuth, (req, res) => {
     res.status(400).json({ error: "witnessUserId is required (real user only)" })
     return
   }
-
-  const user = db.prepare("SELECT name FROM users WHERE id = ?").get(witnessUserId) as
-    | { name: string }
-    | undefined
-  if (!user) {
-    res.status(404).json({ error: "Witness user not found" })
-    return
-  }
   if (witnessUserId === req.user!.userId) {
     res.status(400).json({ error: "cannot invite yourself as witness" })
     return
   }
+  if (!getUserById(witnessUserId)) {
+    res.status(404).json({ error: "Witness user not found" })
+    return
+  }
 
-  const witness = addWitness(param(req.params.id), witnessUserId, req.user!.userId)
-  res.status(201).json(witness)
+  const result = inviteWitness(param(req.params.id), witnessUserId)
+  if ("error" in result) {
+    res.status(409).json({ error: result.error })
+    return
+  }
+  res.status(201).json(result)
 })
 
 router.patch("/:id/witnesses/:witnessId", requireAuth, (req, res) => {
   const db = getDb()
   const witness = db
     .prepare(
-      `
-    SELECT w.* FROM supervise_witnesses w
-    JOIN self_commitments c ON c.id = w.commitment_id
-    WHERE w.id = ? AND w.commitment_id = ?
-      AND (c.owner_user_id = ? OR w.witness_user_id = ?)
-  `
+      `SELECT w.* FROM supervise_witnesses w
+       JOIN self_commitments c ON c.id = w.commitment_id
+       WHERE w.id = ? AND w.commitment_id = ?
+         AND (c.owner_user_id = ? OR w.witness_user_id = ?)`
     )
     .get(
       param(req.params.witnessId),
       param(req.params.id),
       req.user!.userId,
       req.user!.userId
-    ) as any
+    ) as { witness_user_id: string } | undefined
 
   if (!witness) {
     res.status(404).json({ error: "Witness not found" })
@@ -307,151 +251,39 @@ router.patch("/:id/witnesses/:witnessId", requireAuth, (req, res) => {
   }
 
   db.prepare(
-    `
-    UPDATE supervise_witnesses SET status = ?, confirmed_at = datetime('now') WHERE id = ?
-  `
+    `UPDATE supervise_witnesses SET status = ?, confirmed_at = datetime('now') WHERE id = ?`
   ).run(status, param(req.params.witnessId))
 
   if (status === "confirmed") {
     const goal = db
       .prepare("SELECT title, owner_user_id FROM self_commitments WHERE id = ?")
-      .get(param(req.params.id)) as any
-    const wUser = db
-      .prepare("SELECT name FROM users WHERE id = ?")
-      .get(witness.witness_user_id) as { name: string }
+      .get(param(req.params.id)) as { title: string; owner_user_id: string }
+    const wUser = getUserById(witness.witness_user_id)
     createNotification(
       goal.owner_user_id,
       "witness_confirmed",
       "见证人已确认",
-      `${wUser.name} 已确认见证你的承诺「${goal.title}」`,
+      `${wUser?.name ?? "见证人"} 已确认见证你的承诺「${goal.title}」`,
       param(req.params.id)
     )
   }
 
-  const updated = db
-    .prepare(
-      `
-    SELECT w.*, u.name AS witness_name
-    FROM supervise_witnesses w
-    JOIN users u ON u.id = w.witness_user_id
-    WHERE w.id = ?
-  `
-    )
-    .get(param(req.params.witnessId)) as any
-  res.json(rowToWitness(updated))
+  const rows = listWitnesses(param(req.params.id))
+  const updated = rows.find((w) => w.id === param(req.params.witnessId))
+  res.json(updated)
 })
 
 router.delete("/:id", requireAuth, (req, res) => {
-  const db = getDb()
-  const existing = db
-    .prepare(
-      `
-    SELECT * FROM self_commitments WHERE id = ? AND owner_user_id = ?
-  `
-    )
-    .get(param(req.params.id), req.user!.userId) as any
+  const existing = getCommitmentForOwner(param(req.params.id), req.user!.userId)
   if (!existing) {
     res.status(404).json({ error: "Goal not found" })
     return
   }
-  db.prepare("DELETE FROM self_commitments WHERE id = ?").run(param(req.params.id))
-  db.prepare("UPDATE users SET total_goals = MAX(0, total_goals - 1) WHERE id = ?").run(
+  getDb().prepare("DELETE FROM self_commitments WHERE id = ?").run(param(req.params.id))
+  getDb().prepare("UPDATE users SET total_goals = MAX(0, total_goals - 1) WHERE id = ?").run(
     existing.owner_user_id
   )
   res.status(204).send()
 })
-
-function addWitness(commitmentId: string, witnessUserId: string, _ownerUserId: string): GoalWitness {
-  const db = getDb()
-  const id = uuid()
-  db.prepare(
-    `
-    INSERT INTO supervise_witnesses (id, commitment_id, witness_user_id)
-    VALUES (?, ?, ?)
-  `
-  ).run(id, commitmentId, witnessUserId)
-
-  const goal = db
-    .prepare("SELECT title FROM self_commitments WHERE id = ?")
-    .get(commitmentId) as { title: string }
-  createNotification(
-    witnessUserId,
-    "witness_invite",
-    "见证邀请",
-    `你被邀请见证「${goal.title}」`,
-    commitmentId
-  )
-
-  const row = db
-    .prepare(
-      `
-    SELECT w.*, u.name AS witness_name
-    FROM supervise_witnesses w
-    JOIN users u ON u.id = w.witness_user_id
-    WHERE w.id = ?
-  `
-    )
-    .get(id) as any
-  return rowToWitness(row)
-}
-
-function notifyWitnesses(commitmentId: string, goalTitle: string, event: string): void {
-  const db = getDb()
-  const witnesses = db
-    .prepare(
-      `
-    SELECT witness_user_id FROM supervise_witnesses
-    WHERE commitment_id = ? AND status = 'confirmed'
-  `
-    )
-    .all(commitmentId) as { witness_user_id: string }[]
-
-  for (const w of witnesses) {
-    if (event === "achieved") {
-      db.prepare(
-        `
-        UPDATE users SET trust_score = MIN(100, trust_score + 3) WHERE id = ?
-      `
-      ).run(w.witness_user_id)
-    }
-    createNotification(
-      w.witness_user_id,
-      "goal_achieved",
-      "见证承诺已达成",
-      event === "achieved"
-        ? `你见证的「${goalTitle}」已达成，信任分 +3`
-        : `你见证的「${goalTitle}」已更新`,
-      commitmentId
-    )
-  }
-}
-
-function rowToGoal(row: any): Goal {
-  return {
-    id: row.id,
-    title: row.title,
-    description: row.description,
-    reward: row.reward,
-    rewardClaimed: !!row.reward_claimed,
-    deadline: row.deadline,
-    status: row.status,
-    progress: row.progress,
-    createdAt: row.created_at,
-    achievedAt: row.achieved_at,
-    userId: row.owner_user_id,
-  }
-}
-
-function rowToWitness(row: any): GoalWitness {
-  return {
-    id: row.id,
-    goalId: row.commitment_id,
-    witnessUserId: row.witness_user_id,
-    witnessName: row.witness_name,
-    status: row.status,
-    invitedAt: row.invited_at,
-    confirmedAt: row.confirmed_at,
-  }
-}
 
 export default router

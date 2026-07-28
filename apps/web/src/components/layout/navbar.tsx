@@ -6,11 +6,14 @@ import { useEffect, useRef, useState } from "react"
 import { useAuth } from "@/lib/auth-context"
 import { fetchUnreadCount } from "@/lib/api-client"
 
-/** 顶层按角色：我的(Self) / 监督(Supervise)；路由暂仍用 goals/contracts */
+import { ROLES } from "@/lib/roles"
+import { useAuth } from "@/lib/auth-context"
+
+/** 顶层按角色：我的(Self) / 他人(Others)；路由暂仍用 goals/contracts */
 const mainLinks = [
   { href: "/", label: "首页" },
-  { href: "/goals", label: "我的" },
-  { href: "/contracts", label: "监督" },
+  { href: ROLES.self.route, label: ROLES.self.navLabel },
+  { href: ROLES.others.route, label: ROLES.others.navLabel },
   { href: "/create", label: "创建" },
 ]
 
@@ -48,6 +51,8 @@ export function Navbar() {
               (link.href !== "/" && pathname.startsWith(link.href))
             // 未登录时主导航仅保留首页，业务页进头像菜单引导登录
             if (!user && link.href !== "/") return null
+            const lockedOthers =
+              link.href === ROLES.others.route && user && !user.superviseUnlocked
             return (
               <Link
                 key={link.href}
@@ -59,6 +64,11 @@ export function Navbar() {
                 }`}
               >
                 {link.label}
+                {lockedOthers && (
+                  <span className="ml-0.5 text-[10px] font-semibold text-muted" title="需先解锁">
+                    锁
+                  </span>
+                )}
                 {active && (
                   <span className="absolute inset-x-1 -bottom-0.5 h-0.5 bg-seal" />
                 )}

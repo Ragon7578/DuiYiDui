@@ -27,15 +27,15 @@ export function notifyGoalAchieved(userId: string, goalTitle: string, goalId: st
   createNotification(
     userId,
     "goal_achieved",
-    "目标已达成",
-    `恭喜！你已完成目标「${goalTitle}」，记得兑现奖励。`,
+    "承诺已达成",
+    `恭喜！你已完成「${goalTitle}」，记得兑现奖励。`,
     goalId
   )
   createNotification(
     userId,
     "reward_ready",
     "奖励待兑现",
-    `目标「${goalTitle}」的奖励可以兑现了。`,
+    `「${goalTitle}」的奖励可以兑现了。`,
     goalId
   )
 }
@@ -43,8 +43,8 @@ export function notifyGoalAchieved(userId: string, goalTitle: string, goalId: st
 export function checkDeadlineNotifications(userId: string): void {
   const db = getDb()
   const goals = db.prepare(`
-    SELECT id, title, deadline FROM goals
-    WHERE user_id = ? AND status = 'active' AND deadline IS NOT NULL
+    SELECT id, title, deadline FROM self_commitments
+    WHERE owner_user_id = ? AND status = 'active' AND deadline IS NOT NULL
   `).all(userId) as { id: string; title: string; deadline: string }[]
 
   const now = new Date()
@@ -61,8 +61,8 @@ export function checkDeadlineNotifications(userId: string): void {
         createNotification(
           userId,
           "goal_deadline",
-          "目标即将到期",
-          `目标「${goal.title}」将在 ${goal.deadline} 到期，加油！`,
+          "承诺即将到期",
+          `「${goal.title}」将在 ${goal.deadline} 到期，加油！`,
           goal.id
         )
       }

@@ -39,12 +39,14 @@ apps/
 ├── api/
 │   ├── data/                 # SQLite 文件（gitignore）
 │   ├── src/
-│   │   ├── index.ts          # Express 入口、CORS、路由挂载
+│   │   ├── index.ts          # 监听端口入口
+│   │   ├── app.ts            # Express 应用（可供测试挂载）
 │   │   ├── middleware/auth.ts
 │   │   ├── db/schema.ts      # 建表 + 迁移
 │   │   ├── db/seed.ts
 │   │   ├── routes/           # auth goals contracts pledges profile notifications ai
-│   │   ├── services/         # notifications, intent-parser
+│   │   ├── services/         # notifications, self-commitments, supervise-agreements…
+│   │   ├── test/             # API 集成回归（Vitest + supertest）
 │   │   └── types.ts
 │   └── package.json
 └── web/
@@ -97,13 +99,16 @@ Authorization: Bearer <token>
 npm run seed              # 重置 SQLite 演示数据
 npm run build             # 构建 api + web
 npm run lint              # 前端 ESLint
+npm test                  # API 回归 + Web 角色单测（见 docs/testing.md）
+npm run test:api          # 仅 API
+npm run test:web          # 仅 Web
 
 # 仅 API
 npm run seed -w @contract-spirit/api
 npm run build -w @contract-spirit/api
 ```
 
-数据库文件：`apps/api/data/contract-spirit.db`（勿提交）。
+数据库文件：`apps/api/data/contract-spirit.db`（勿提交）。测试使用临时库，不写该文件。
 
 ## 七、前端页面一览
 

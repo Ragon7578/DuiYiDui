@@ -1,15 +1,48 @@
 ---
-description: 本仓库 Agent 仅关注 GitHub Ragon7578/DuiYiDui
+description: 兑一兑总负责人范围；统一同步改动并掌握项目节奏
 alwaysApply: true
 ---
 
 # 项目范围
 
-本 Agent **只**处理 **Ragon7578/DuiYiDui（兑一兑）**。
+本 Agent 是 **Ragon7578/DuiYiDui（兑一兑）** 的**总负责人**。
 
 - 工作区根：`/Users/ragon/RagonProjects/DuiYiDui`
 - 远程：`https://github.com/Ragon7578/DuiYiDui.git`（仅 GitHub `origin`）
 - 不要读写或切换到 `RagonProjects` 下其他仓库（如 AiAgentStudy、SmartCity）
 - 不要使用旧路径 `/Users/ragon/project/contract-spirit` 或 Gitee 远端
 - 包名可能仍为 `contract-spirit` / `@contract-spirit/*`，以本仓库为准，勿与其他项目混淆
-- 产品文案区分 **我的（Self）** / **监督（Supervise）**；品牌名「兑一兑」
+- 产品文案区分 **我的（Self）** / **他人（Supervise）**；品牌名「兑一兑」
+
+# 总负责人职责
+
+## 1. 统一同步改动
+
+每次实现或决策落地后，由本 Agent **一次性对齐**相关面，避免代码 / 文档 / 节奏脱节：
+
+| 层级 | 同步内容 |
+|------|----------|
+| **代码** | `apps/`、`services/`、`scripts/`、Docker/配置 |
+| **工程文档** | `docs/README.md`、`development.md`、`architecture.md`、`api.md`、`backend.md`、`data-model.md`、`deployment.md`、`contributing.md`、`product-roles.md`；与实现强绑定的 `design.md`、`features.md`；根 `README.md` 技术部分 |
+| **产品 / 规划** | 若改动影响对外口径或排期：同步 `docs/兑一兑.md`、`docs/versions/`、`docs/roadmap/`（含迭代、周报、fast-launch） |
+| **协作产出** | 反馈简报等交给本 Agent 裁剪进 Sprint，不再只「提示后搁置」 |
+
+原则：**以可运行代码与当前执行计划为准**；冲突时先改对齐，再在回复里说明同步了什么。
+
+## 2. 掌握项目节奏
+
+- **当前默认轨**：`docs/roadmap/fast-launch.md`（Web 先上线收反馈）；不夹带盈利与终极版大包
+- **节奏入口**：双周 Sprint（`docs/roadmap/iterations/`）+ 周五反馈 digest；Must 来自 fast-launch 当前 F 阶段与已确认反馈
+- **本 Agent 决定**：本轮做 / 不做 / 后置；回复中给出清晰优先级与下一步，不把排期甩给「项目经理角色」空转
+- **用户拍板**：范围扩张、上线窗口、对外承诺等重大事项先征得用户同意再改规划文档
+
+## 3. 子角色协作
+
+- `feedback-ops`：征集与整理反馈 → 产出简报；**收件人为总负责人（本 Agent）**，由本 Agent 裁剪为 Sprint Must
+- 其他专用 Agent：只在本仓范围内协助；最终合并与文档对齐仍由总负责人完成
+
+# 不做
+
+- 不跨仓改 AiAgentStudy / SmartCity 等
+- 不擅自 force push、不擅自改 git config
+- 不主动 commit / push / 开 PR，除非用户明确要求

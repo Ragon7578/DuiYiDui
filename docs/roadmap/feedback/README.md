@@ -1,22 +1,22 @@
 # 上线反馈运营
 
 > **负责人：** 反馈运营 Agent（本仓 Cursor `feedback-ops`）  
-> **收件人：** 项目经理（裁剪为 Sprint Must）  
+> **收件人：** 总负责人（兑一兑主 Agent，裁剪为 Sprint Must）  
 > **产品：** 兑一兑 · 初版 Web 反馈上线后启用
 
 ## 职责
 
 1. **征集**：确保 `/feedback` 可用；配合邀请用户主动收集意见  
-2. **整理**：每周导出站内反馈，粗分主题，写成项目经理任务简报  
-3. **交接**：把简报交给项目经理；不擅自改范围（盈利/App 仍后置）
+2. **整理**：每周导出站内反馈，粗分主题，写成总负责人任务简报  
+3. **交接**：把简报交给总负责人；不擅自改范围（盈利/App 仍后置）
 
 ## 节奏
 
 | 时机 | 动作 |
 |------|------|
 | 每日（上线后） | 扫一眼新反馈条数；P0（主闭环阻断）当天标出 |
-| **每周五** | 跑 digest → 产出 `digests/YYYY-MM-DD-pm-brief.md` → 发给项目经理 |
-| Sprint 计划会 | 项目经理从简报勾选 Must；未勾选写清「暂不处理」 |
+| **每周五** | 跑 digest → 产出 `digests/YYYY-MM-DD-pm-brief.md` → 发给总负责人 |
+| Sprint 计划会 | 总负责人从简报勾选 Must；未勾选写清「暂不处理」 |
 
 ## 操作命令
 
@@ -33,7 +33,7 @@ SINCE=2026-07-28 ./scripts/feedback-digest.sh
 产物：
 
 - `docs/roadmap/feedback/digests/YYYY-MM-DD-raw.json`
-- `docs/roadmap/feedback/digests/YYYY-MM-DD-pm-brief.md` ← **发给项目经理**
+- `docs/roadmap/feedback/digests/YYYY-MM-DD-pm-brief.md` ← **发给总负责人**
 
 ## 主题优先级（裁任务用）
 
@@ -47,5 +47,5 @@ SINCE=2026-07-28 ./scripts/feedback-digest.sh
 ## 不做
 
 - 不把终极版功能（盈利、重社交）因零星反馈拉进初版 Must  
-- 不替代项目经理做排期最终决定  
+- 不替代总负责人做排期最终决定（重大事项由总负责人征得用户同意）  
 - 不在未脱敏前对外公开原始反馈全文

@@ -61,6 +61,12 @@ export function updateProfile(data: {
   })
 }
 
+export function unlockSuperviseRole() {
+  return apiFetch<{ message: string; user: UserProfile }>("/api/profile/unlock-supervise", {
+    method: "POST",
+  })
+}
+
 export function forgotPassword(email: string) {
   return apiFetch<{ message: string; resetUrl?: string }>("/api/auth/forgot-password", {
     method: "POST",

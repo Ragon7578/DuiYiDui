@@ -4,6 +4,10 @@ type Bucket = { count: number; resetAt: number }
 
 const buckets = new Map<string, Bucket>()
 
+export function clearRateLimitBuckets(): void {
+  buckets.clear()
+}
+
 /** Simple in-memory rate limit (single instance). */
 export function rateLimit(options: {
   windowMs: number
@@ -11,6 +15,10 @@ export function rateLimit(options: {
   key?: (req: Request) => string
 }) {
   return (req: Request, res: Response, next: NextFunction) => {
+    if (process.env.NODE_ENV === "test") {
+      next()
+      return
+    }
     const id = options.key?.(req) || req.ip || "anon"
     const key = `${req.path}:${id}`
     const now = Date.now()

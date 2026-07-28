@@ -2,7 +2,7 @@
 
 > 本目录为**项目工程说明**（开发、架构、API、数据、设计规范）。  
 > 与代码同仓维护，以当前实现为准。  
-> **产品整体介绍**见 [`兑一兑.md`](./兑一兑.md)（由项目经理维护）；路线图见 [`roadmap/`](./roadmap/)。
+> **产品整体介绍**见 [`兑一兑.md`](./兑一兑.md)（总负责人维护）；路线图见 [`roadmap/`](./roadmap/)。
 
 口号：对自己守信，才能对他人守信。
 
@@ -47,6 +47,9 @@ contract-spirit/
 | `npm run seed` | 初始化 / 重置演示数据 |
 | `npm run build` | 先后构建 API、Web |
 | `npm run lint` | 前端 lint |
+| `npm test` | API 回归 + Web 角色单测 |
+| `npm run test:api` | 仅 API 集成测试 |
+| `npm run test:web` | 仅 Web 单测 |
 
 ## 文档索引
 
@@ -58,11 +61,12 @@ contract-spirit/
 | [backend.md](backend.md) | **后端说明** — Express 模块、安全、Java 规划 |
 | [data-model.md](data-model.md) | **数据模型** — 表结构、信任分规则 |
 | [versions/README.md](versions/README.md) | **初版 / 终极版** — 范围拆分 |
-| [roadmap/feedback/](roadmap/feedback/) | **上线反馈运营** — 征集、digest、给项目经理的任务简报 |
+| [roadmap/feedback/](roadmap/feedback/) | **上线反馈运营** — 征集、digest、给总负责人的任务简报 |
 | [roadmap/README.md](roadmap/README.md) | 路线总入口 · 快速轨 / 完整初版轨 |
 | [product-roles.md](product-roles.md) | **角色 IA** — 我的 / 他人双套结构（导航 + 创建选角） |
 | [design.md](design.md) | **UI/UX（初版）** |
 | [features.md](features.md) | **功能规格（初版）** |
+| [testing.md](testing.md) | **测试与回归** — 用例库、自动化、发版 DoD |
 | [deployment.md](deployment.md) | **部署** |
 | [roadmap-launch.md](roadmap-launch.md) | 旧入口（指向 roadmap/） |
 | [contributing.md](contributing.md) | **贡献指南** |

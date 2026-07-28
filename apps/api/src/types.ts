@@ -67,6 +67,12 @@ export interface UserProfile {
   fulfilledContracts: number
   breachedContracts: number
   bio: string
+  /** 他人（监督）角色是否已解锁 */
+  superviseUnlocked: boolean
+  superviseUnlockRequired: number
+  superviseUnlockProgress: number
+  superviseUnlockEligible: boolean
+  superviseUnlockedAt: string | null
 }
 
 export interface Stats {

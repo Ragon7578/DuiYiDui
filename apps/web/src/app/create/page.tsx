@@ -2,22 +2,25 @@
 
 import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+import Link from "next/link"
 import { Card } from "@/components/ui/card"
 import { FormLabel } from "@/components/ui/form-label"
 import { AuthGuard } from "@/components/layout/auth-guard"
 import { VoiceInput } from "@/components/create/voice-input"
-import { useAuth } from "@/lib/auth-context"
 import {
   createGoal,
   createContract,
-  fetchUsers,
   parseIntent,
   type ParsedGoal,
   type ParsedContract,
 } from "@/lib/api-client"
 import { track } from "@/lib/analytics"
 import { ApiError } from "@/lib/api"
-import type { AuthUser } from "@/lib/types"
+import { useOtherUsers } from "@/lib/use-other-users"
+import { UserSelect } from "@/components/users/user-select"
+import { SuperviseUnlockGate } from "@/components/roles/supervise-unlock-gate"
+import { useAuth } from "@/lib/auth-context"
+import { ROLES, parseRoleSet, roleSetToCreateMode, superviseUnlockRemaining, type RoleSet } from "@/lib/roles"
 
 type CreateMode = "goal" | "contract"
 
@@ -31,13 +34,112 @@ export default function CreatePage() {
   )
 }
 
-function CreateContent() {
+function RolePicker({ onboarding }: { onboarding: boolean }) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { user } = useAuth()
+  const othersLocked = user ? !user.superviseUnlocked : true
+
+  function pickRole(set: RoleSet) {
+    if (set === "others" && othersLocked) return
+    const params = new URLSearchParams(searchParams.toString())
+    params.set("set", set)
+    router.push(`/create?${params.toString()}`)
+  }
+
+  return (
+    <div className="mx-auto max-w-2xl space-y-8 animate-rise">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-seal">New</p>
+        <h1 className="mt-1 font-display text-3xl font-black tracking-tight">创建</h1>
+        <p className="mt-2 text-sm text-muted">先选角色：这是给自己的项目，还是给别人的项目？</p>
+      </div>
+
+      {onboarding && (
+        <div className="rounded border border-seal/25 bg-seal-soft/50 px-4 py-3 text-sm text-ink">
+          <p className="font-semibold">欢迎加入兑一兑</p>
+          <p className="mt-1 text-muted">
+            建议先从「给自己的项目」开始：写一条带奖励的承诺。他人角色需先达成足够数量的自身计划后解锁。
+          </p>
+        </div>
+      )}
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        {([ROLES.self, ROLES.others] as const).map((role) => {
+          const locked = role.set === "others" && othersLocked
+          return (
+            <button
+              key={role.set}
+              type="button"
+              onClick={() => pickRole(role.set)}
+              disabled={locked}
+              className={`rounded border p-6 text-left transition ${
+                locked
+                  ? "cursor-not-allowed border-line/60 bg-paper/40 opacity-75"
+                  : "panel-interactive border-line bg-white/90 hover:border-ink"
+              }`}
+            >
+              <p className="text-xs font-semibold uppercase tracking-wider text-seal">{role.navLabel}</p>
+              <p className="mt-2 font-display text-xl font-bold text-ink">{role.projectLabel}</p>
+              <p className="mt-2 text-sm text-muted">{role.description}</p>
+              {locked && user ? (
+                <span className="mt-4 inline-block text-sm font-semibold text-muted">
+                  还需达成 {superviseUnlockRemaining(user)} 个 ·{" "}
+                  <Link href={ROLES.others.route} className="text-seal hover:underline" onClick={(e) => e.stopPropagation()}>
+                    去解锁
+                  </Link>
+                </span>
+              ) : (
+                <span className="mt-4 inline-block text-sm font-semibold text-seal">选择 →</span>
+              )}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function CreateContent() {
+  const searchParams = useSearchParams()
+  const { user } = useAuth()
   const onboarding = searchParams.get("onboarding") === "1"
   const setParam = searchParams.get("set")
-  const initialMode: CreateMode =
-    setParam === "supervise" || setParam === "contract" ? "contract" : "goal"
+  const roleSet = parseRoleSet(setParam)
+
+  if (!roleSet) {
+    return <RolePicker onboarding={onboarding} />
+  }
+
+  if (roleSet === "others" && user && !user.superviseUnlocked) {
+    return (
+      <div className="mx-auto max-w-2xl space-y-6 animate-rise">
+        <Link
+          href={`/create${onboarding ? "?onboarding=1" : ""}`}
+          className="text-sm font-semibold text-seal hover:underline"
+        >
+          ← 重新选角色
+        </Link>
+        <SuperviseUnlockGate user={user} />
+      </div>
+    )
+  }
+
+  return <CreateForm roleSet={roleSet} onboarding={onboarding} setParam={setParam} />
+}
+
+function CreateForm({
+  roleSet,
+  onboarding,
+  setParam,
+}: {
+  roleSet: RoleSet
+  onboarding: boolean
+  setParam: string | null
+}) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const initialMode = roleSetToCreateMode(roleSet)
   const [mode, setMode] = useState<CreateMode>(initialMode)
   const [draftText, setDraftText] = useState("")
   const [parsing, setParsing] = useState(false)
@@ -49,18 +151,17 @@ function CreateContent() {
   const [seedContract, setSeedContract] = useState<ParsedContract | null>(null)
 
   useEffect(() => {
-    if (setParam === "supervise" || setParam === "contract") setMode("contract")
-    else if (setParam === "self" || setParam === "goal") setMode("goal")
-  }, [setParam])
+    setMode(roleSetToCreateMode(roleSet))
+  }, [roleSet])
 
   useEffect(() => {
-    track("page_create", { onboarding, set: setParam || "self" })
-  }, [onboarding, setParam])
+    track("page_create", { onboarding, set: setParam || roleSet })
+  }, [onboarding, setParam, roleSet])
 
   function switchMode(next: CreateMode) {
     setMode(next)
     const params = new URLSearchParams(searchParams.toString())
-    params.set("set", next === "contract" ? "supervise" : "self")
+    params.set("set", next === "contract" ? ROLES.others.set : ROLES.self.set)
     router.replace(`/create?${params.toString()}`)
   }
 
@@ -110,6 +211,7 @@ function CreateContent() {
     setSeedGoal(goal)
     setSeedContract(null)
     setApplyKey((k) => k + 1)
+    switchMode("goal")
   }
 
   function applyContract(contract: ParsedContract) {
@@ -117,23 +219,34 @@ function CreateContent() {
     setSeedContract(contract)
     setSeedGoal(null)
     setApplyKey((k) => k + 1)
+    switchMode("contract")
   }
+
+  const activeRole = mode === "goal" ? ROLES.self : ROLES.others
 
   return (
     <div className="mx-auto max-w-2xl space-y-8 animate-rise">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-seal">New</p>
-        <h1 className="mt-1 font-display text-3xl font-black tracking-tight">创建</h1>
-        <p className="mt-2 text-sm text-muted">
-          先选角色：对自己立承诺，或与真实用户建立监督约定。
+        <Link
+          href={`/create${onboarding ? "?onboarding=1" : ""}`}
+          className="text-sm font-semibold text-seal hover:underline"
+        >
+          ← 重新选角色
+        </Link>
+        <p className="mt-3 text-xs font-semibold uppercase tracking-[0.2em] text-seal">
+          {activeRole.navLabel}
         </p>
+        <h1 className="mt-1 font-display text-3xl font-black tracking-tight">
+          {activeRole.createLabel}
+        </h1>
+        <p className="mt-2 text-sm text-muted">{activeRole.description}</p>
       </div>
 
-      {onboarding && (
+      {onboarding && mode === "goal" && (
         <div className="rounded border border-seal/25 bg-seal-soft/50 px-4 py-3 text-sm text-ink">
           <p className="font-semibold">欢迎加入兑一兑</p>
           <p className="mt-1 text-muted">
-            建议先在「我的」里创建一条带奖励的承诺。也可邀请见证人——对方会在监督侧确认。
+            建议先写一条带奖励的承诺。也可邀请见证人——对方会在「他人」侧确认。
           </p>
         </div>
       )}
@@ -204,7 +317,7 @@ function CreateContent() {
         {parsedContracts.length > 1 && (
           <div className="space-y-2 border-t border-line pt-3">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted">
-              识别到多份监督约定 · 点击填入
+              识别到多份他人项目 · 点击填入
             </p>
             {parsedContracts.map((c, i) => (
               <button
@@ -232,7 +345,7 @@ function CreateContent() {
             mode === "goal" ? "text-ink" : "text-muted hover:text-ink"
           }`}
         >
-          我的承诺
+          {ROLES.self.projectLabel}
           {mode === "goal" && <span className="absolute inset-x-2 -bottom-3 h-0.5 bg-seal" />}
         </button>
         <button
@@ -242,7 +355,7 @@ function CreateContent() {
             mode === "contract" ? "text-ink" : "text-muted hover:text-ink"
           }`}
         >
-          监督约定
+          {ROLES.others.projectLabel}
           {mode === "contract" && <span className="absolute inset-x-2 -bottom-3 h-0.5 bg-seal" />}
         </button>
       </div>
@@ -264,21 +377,14 @@ function GoalForm({
   onboarding?: boolean
 }) {
   const router = useRouter()
-  const { user } = useAuth()
   const [title, setTitle] = useState(seed?.title || "")
   const [description, setDescription] = useState(seed?.description || "")
   const [reward, setReward] = useState(seed?.reward || "")
   const [deadline, setDeadline] = useState(seed?.deadline || "")
   const [witnessUserId, setWitnessUserId] = useState("")
-  const [users, setUsers] = useState<AuthUser[]>([])
+  const users = useOtherUsers()
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
-
-  useEffect(() => {
-    fetchUsers()
-      .then((list) => setUsers(list.filter((u) => u.id !== user?.id)))
-      .catch(() => {})
-  }, [user?.id])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -294,7 +400,7 @@ function GoalForm({
       })
       track("create_goal", { hasWitness: Boolean(witnessUserId), onboarding: Boolean(onboarding) })
       if (witnessUserId) track("invite_witness")
-      router.push("/goals")
+      router.push(ROLES.self.route)
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "创建失败")
     } finally {
@@ -355,16 +461,12 @@ function GoalForm({
         </div>
         <div>
           <FormLabel>见证人（建议 1 人，可不选）</FormLabel>
-          <select
+          <UserSelect
             value={witnessUserId}
-            onChange={(e) => setWitnessUserId(e.target.value)}
-            className="input-field"
-          >
-            <option value="">稍后再邀请</option>
-            {users.map((u) => (
-              <option key={u.id} value={u.id}>{u.name}</option>
-            ))}
-          </select>
+            onChange={setWitnessUserId}
+            users={users}
+            emptyLabel="稍后再邀请"
+          />
           <p className="mt-1 text-xs text-muted">
             找一个在乎你说到做到的人；对方确认见证后，你达成时对方也会获得成就点（信任分 +3）。
           </p>
@@ -374,7 +476,7 @@ function GoalForm({
           disabled={loading}
           className="btn-primary w-full py-2.5 text-sm"
         >
-          {loading ? "创建中..." : onboarding ? "写下我的第一条承诺" : "创建我的承诺"}
+          {loading ? "创建中..." : onboarding ? "写下我的第一条承诺" : "创建给自己的项目"}
         </button>
       </form>
     </Card>
@@ -383,30 +485,25 @@ function GoalForm({
 
 function ContractForm({ seed }: { seed?: ParsedContract | null }) {
   const router = useRouter()
-  const { user } = useAuth()
   const [title, setTitle] = useState(seed?.title || "")
   const [description, setDescription] = useState(seed?.description || "")
   const [reward, setReward] = useState(seed?.reward || "")
   const [clauseContent, setClauseContent] = useState("")
   const [clauses, setClauses] = useState<string[]>(seed?.clauses || [])
-  const [users, setUsers] = useState<AuthUser[]>([])
   const [partyUserId, setPartyUserId] = useState("")
   const [parties, setParties] = useState<{ id: string; name: string; role: string }[]>([])
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
-
-  useEffect(() => {
-    fetchUsers().then(setUsers).catch(() => {})
-  }, [])
+  const users = useOtherUsers(parties.map((p) => p.id))
 
   useEffect(() => {
     if (!seed?.parties?.length || users.length === 0) return
     const resolved = seed.parties
-      .map((name) => users.find((u) => u.name === name && u.id !== user?.id))
-      .filter((u): u is AuthUser => Boolean(u))
+      .map((name) => users.find((u) => u.name === name))
+      .filter((u): u is NonNullable<typeof u> => Boolean(u))
       .map((u) => ({ id: u.id, name: u.name, role: "promisee" }))
     if (resolved.length) setParties(resolved)
-  }, [seed, users, user?.id])
+  }, [seed, users])
 
   function addParty() {
     if (!partyUserId) return
@@ -448,7 +545,7 @@ function ContractForm({ seed }: { seed?: ParsedContract | null }) {
         parties,
         clauses: clauses.map((c) => ({ content: c })),
       })
-      router.push("/contracts")
+      router.push(ROLES.others.route)
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "创建失败")
     } finally {
@@ -456,9 +553,7 @@ function ContractForm({ seed }: { seed?: ParsedContract | null }) {
     }
   }
 
-  const otherUsers = users.filter(
-    (u) => u.id !== user?.id && !parties.some((p) => p.id === u.id)
-  )
+  const otherUsers = users
 
   return (
     <Card>
@@ -472,11 +567,11 @@ function ContractForm({ seed }: { seed?: ParsedContract | null }) {
           <p className="rounded border border-seal/30 bg-seal-soft px-3 py-2 text-sm text-seal">{error}</p>
         )}
         <div>
-          <FormLabel required>监督约定标题</FormLabel>
+          <FormLabel required>项目标题</FormLabel>
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="例如：合作协议"
+            placeholder="例如：一起完成季度复盘"
             className="input-field"
             required
           />
@@ -501,23 +596,17 @@ function ContractForm({ seed }: { seed?: ParsedContract | null }) {
         <div>
           <FormLabel required>对方（真实用户）</FormLabel>
           <div className="flex gap-2">
-            <select
+            <UserSelect
               value={partyUserId}
-              onChange={(e) => setPartyUserId(e.target.value)}
+              onChange={setPartyUserId}
+              users={otherUsers}
               className="input-field flex-1"
-            >
-              <option value="">选择已注册用户</option>
-              {otherUsers.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.name}
-                </option>
-              ))}
-            </select>
+            />
             <button type="button" onClick={addParty} className="rounded border border-line px-4 py-2 text-sm hover:border-ink">
               添加
             </button>
           </div>
-          <p className="mt-1 text-xs text-muted">监督侧必须是多用户；不支持虚构姓名。</p>
+          <p className="mt-1 text-xs text-muted">给他人项目须多用户参与；不支持虚构姓名。</p>
           {parties.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-2">
               {parties.map((p) => (
@@ -556,7 +645,7 @@ function ContractForm({ seed }: { seed?: ParsedContract | null }) {
           disabled={loading}
           className="btn-primary w-full py-2.5 text-sm"
         >
-          {loading ? "创建中..." : "创建监督约定"}
+          {loading ? "创建中..." : "创建给别人的项目"}
         </button>
       </form>
     </Card>

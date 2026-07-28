@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/auth-context"
 import { fetchGoals, updateProfile } from "@/lib/api-client"
 import { ApiError } from "@/lib/api"
 import type { Goal } from "@/lib/types"
+import { ROLES } from "@/lib/roles"
 import Link from "next/link"
 
 export default function ProfilePage() {
@@ -145,8 +146,8 @@ function ProfileContent() {
       </section>
 
       <section className="grid grid-cols-2 gap-4">
-        <StatsCard label="监督 · 总数" value={user.totalContracts} />
-        <StatsCard label="监督 · 已履行" value={user.fulfilledContracts} />
+        <StatsCard label={`${ROLES.others.navLabel} · 总数`} value={user.totalContracts} />
+        <StatsCard label={`${ROLES.others.navLabel} · 已履行`} value={user.fulfilledContracts} />
       </section>
 
       <Card>

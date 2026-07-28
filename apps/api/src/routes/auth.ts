@@ -6,6 +6,7 @@ import { getDb } from "../db/schema.js"
 import { requireAuth, signToken } from "../middleware/auth.js"
 import { rateLimit } from "../middleware/rate-limit.js"
 import type { UserProfile } from "../types.js"
+import { enrichUserProfile } from "../services/user-profile.js"
 
 const router = Router()
 const BCRYPT_ROUNDS = 12
@@ -17,22 +18,8 @@ function normalizeUsername(value: unknown): string {
   return String(value || "").trim()
 }
 
-function rowToProfile(row: any): UserProfile {
-  return {
-    id: row.id,
-    name: row.name,
-    email: row.email || null,
-    phone: row.phone || null,
-    avatar: row.avatar,
-    trustScore: row.trust_score,
-    totalGoals: row.total_goals,
-    achievedGoals: row.achieved_goals,
-    abandonedGoals: row.abandoned_goals,
-    totalContracts: row.total_contracts,
-    fulfilledContracts: row.fulfilled_contracts,
-    breachedContracts: row.breached_contracts,
-    bio: row.bio,
-  }
+function rowToProfile(row: Record<string, unknown>): UserProfile {
+  return enrichUserProfile(row)
 }
 
 function getProfile(userId: string): UserProfile | null {

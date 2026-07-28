@@ -12,6 +12,9 @@
     "stop": "bash scripts/stop.sh",
     "build": "npm run build -w @contract-spirit/api && npm run build -w @contract-spirit/web",
     "seed": "npm run seed -w @contract-spirit/api",
-    "lint": "npm run lint -w @contract-spirit/web"
+    "lint": "npm run lint -w @contract-spirit/web",
+    "test": "npm run test -w @contract-spirit/api && npm run test -w @contract-spirit/web",
+    "test:api": "npm run test -w @contract-spirit/api",
+    "test:web": "npm run test -w @contract-spirit/web"
   }
 }

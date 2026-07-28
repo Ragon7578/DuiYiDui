@@ -34,6 +34,7 @@ npm run dev
 ```bash
 npm run dev:api    # 仅后端
 npm run dev:web    # 仅前端
+npm test           # 回归测试（见 docs/testing.md）
 ```
 
 ## 文档
@@ -45,6 +46,7 @@ npm run dev:web    # 仅前端
 - [API](docs/api.md)
 - [数据模型](docs/data-model.md)
 - [功能规格](docs/features.md)
+- [测试与回归](docs/testing.md)
 - [设计规范](docs/design.md)
 
 ## 远程

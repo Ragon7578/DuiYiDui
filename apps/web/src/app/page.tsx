@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { ROLES } from "@/lib/roles"
 import { StatsCard } from "@/components/ui/stats-card"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -25,7 +26,12 @@ export default function Home() {
 
   return (
     <div className="space-y-10">
-      <WelcomeHero loggedIn={Boolean(user)} userName={user?.name} trustScore={user?.trustScore} />
+      <WelcomeHero
+        loggedIn={Boolean(user)}
+        userName={user?.name}
+        trustScore={user?.trustScore}
+        othersUnlocked={user?.superviseUnlocked}
+      />
       {user ? <HomeDashboard /> : <WelcomeGuestExtra />}
     </div>
   )
@@ -35,10 +41,12 @@ function WelcomeHero({
   loggedIn,
   userName,
   trustScore,
+  othersUnlocked,
 }: {
   loggedIn: boolean
   userName?: string
   trustScore?: number
+  othersUnlocked?: boolean
 }) {
   return (
     <section className="animate-rise relative overflow-hidden panel border-ink/10 p-8 md:p-12">
@@ -54,7 +62,7 @@ function WelcomeHero({
       <p className="mt-4 max-w-xl text-base text-muted md:text-lg">
         {loggedIn
           ? `你好，${userName}。写下一件要对得起自己的事，想好奖励，做到了就去兑现。`
-          : "把目标与奖励写清楚。自己达成，或监督他人达成，都能涨成就点。"}
+          : "把目标与奖励写清楚。给自己的项目、给别人的项目，都能涨成就点。"}
       </p>
       {loggedIn && trustScore != null && (
         <p className="mt-2 text-sm text-muted">履约档案 · 信任分 {trustScore}</p>
@@ -62,17 +70,26 @@ function WelcomeHero({
       <div className="mt-8 flex flex-wrap gap-3">
         {loggedIn ? (
           <>
-            <Link href="/create?set=self" className="btn-primary px-5 py-2.5 text-sm">
-              写我的承诺
+            <Link href={ROLES.self.createHref} className="btn-primary px-5 py-2.5 text-sm">
+              给自己的项目
             </Link>
+            {othersUnlocked ? (
+              <Link
+                href={ROLES.others.createHref}
+                className="rounded border border-line bg-white/60 px-5 py-2.5 text-sm font-semibold text-ink transition hover:border-ink"
+              >
+                给别人的项目
+              </Link>
+            ) : (
+              <Link
+                href={ROLES.others.route}
+                className="rounded border border-line bg-white/60 px-5 py-2.5 text-sm font-semibold text-muted transition hover:border-ink"
+              >
+                他人角色待解锁
+              </Link>
+            )}
             <Link
-              href="/create?set=supervise"
-              className="rounded border border-line bg-white/60 px-5 py-2.5 text-sm font-semibold text-ink transition hover:border-ink"
-            >
-              立监督约定
-            </Link>
-            <Link
-              href="/goals"
+              href={ROLES.self.route}
               className="rounded border border-line bg-white/60 px-5 py-2.5 text-sm font-semibold text-ink transition hover:border-ink"
             >
               进入「我的」
@@ -102,7 +119,7 @@ function WelcomeGuestExtra() {
       {[
         { t: "写清奖励", d: "做到了给自己什么？先想清楚，才兑得了。" },
         { t: "可以有人看着", d: "邀请见证人；对方确认后，你达成他也涨成就点。" },
-        { t: "信用看得见", d: "自己做到、监督他人做到，都记进信任分。" },
+        { t: "信用看得见", d: "自己做到、帮他人做到，都记进信任分。" },
       ].map((item) => (
         <div key={item.t} className="border-t border-line pt-4">
           <h2 className="font-display text-lg font-bold">{item.t}</h2>
@@ -189,7 +206,7 @@ function HomeDashboard() {
           <p className="mt-2 text-sm text-muted">
             例如：连续跑步 30 天 → 奖励一双跑鞋。写清楚，才兑得了。
           </p>
-          <Link href="/create?set=self" className="btn-primary mt-5 inline-block px-5 py-2.5 text-sm">
+          <Link href={ROLES.self.createHref} className="btn-primary mt-5 inline-block px-5 py-2.5 text-sm">
             写下第一条「我的」承诺
           </Link>
         </section>
@@ -197,15 +214,15 @@ function HomeDashboard() {
 
       <section className="grid grid-cols-2 gap-3 animate-rise-delay-1 lg:grid-cols-4 lg:gap-4">
         <StatsCard label="信任分" value={user.trustScore} description="履约档案" accent />
-        <StatsCard label="我的" value={`${user.achievedGoals}/${user.totalGoals}`} description="已达成 / 总数" />
-        <StatsCard label="监督" value={`${user.fulfilledContracts}/${user.totalContracts}`} description="已履行 / 总数" />
-        <StatsCard label="进行中" value={activeGoals.length + activeContracts.length} description="我的 + 监督" />
+        <StatsCard label={ROLES.self.navLabel} value={`${user.achievedGoals}/${user.totalGoals}`} description="已达成 / 总数" />
+        <StatsCard label={ROLES.others.navLabel} value={`${user.fulfilledContracts}/${user.totalContracts}`} description="已履行 / 总数" />
+        <StatsCard label="进行中" value={activeGoals.length + activeContracts.length} description="我的 + 他人" />
       </section>
 
       <section className="animate-rise-delay-2 space-y-4">
         <div className="flex items-end justify-between border-b border-line pb-3">
-          <h2 className="font-display text-2xl font-bold tracking-tight">我的 · 进行中</h2>
-          <Link href="/goals" className="text-sm font-semibold text-seal hover:underline">
+          <h2 className="font-display text-2xl font-bold tracking-tight">{ROLES.self.navLabel} · 进行中</h2>
+          <Link href={ROLES.self.route} className="text-sm font-semibold text-seal hover:underline">
             查看全部
           </Link>
         </div>
@@ -236,7 +253,7 @@ function HomeDashboard() {
           {!hasNothing && activeGoals.length === 0 && (
             <p className="py-8 text-center text-sm text-muted">
               暂无进行中的承诺，
-              <Link href="/create?set=self" className="font-semibold text-seal hover:underline">
+              <Link href={ROLES.self.createHref} className="font-semibold text-seal hover:underline">
                 写一条
               </Link>
             </p>
@@ -246,8 +263,8 @@ function HomeDashboard() {
 
       <section className="animate-rise-delay-3 space-y-4">
         <div className="flex items-end justify-between border-b border-line pb-3">
-          <h2 className="font-display text-2xl font-bold tracking-tight">监督 · 进行中</h2>
-          <Link href="/contracts" className="text-sm font-semibold text-seal hover:underline">
+          <h2 className="font-display text-2xl font-bold tracking-tight">{ROLES.others.navLabel} · 进行中</h2>
+          <Link href={ROLES.others.route} className="text-sm font-semibold text-seal hover:underline">
             查看全部
           </Link>
         </div>
@@ -272,8 +289,8 @@ function HomeDashboard() {
           ))}
           {activeContracts.length === 0 && (
             <p className="py-8 text-center text-sm text-muted">
-              暂无监督中的约定，
-              <Link href="/create?set=supervise" className="font-semibold text-seal hover:underline">
+              暂无他人项目，
+              <Link href={ROLES.others.createHref} className="font-semibold text-seal hover:underline">
                 找人一起立约
               </Link>
             </p>

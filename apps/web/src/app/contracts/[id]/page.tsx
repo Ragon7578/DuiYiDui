@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { AuthGuard } from "@/components/layout/auth-guard"
 import { fetchContract, updateClause } from "@/lib/api-client"
 import { formatDate, getStatusLabel } from "@/lib/utils"
+import { ROLES } from "@/lib/roles"
 import type { Contract } from "@/lib/types"
 
 export default function ContractDetailPage() {
@@ -28,7 +29,7 @@ function ContractDetailContent() {
   useEffect(() => {
     fetchContract(id)
       .then(setContract)
-      .catch(() => setError("监督约定不存在"))
+      .catch(() => setError("他人项目不存在"))
       .finally(() => setLoading(false))
   }, [id])
 
@@ -42,8 +43,8 @@ function ContractDetailContent() {
 
   return (
     <div className="space-y-6">
-      <Link href="/contracts" className="text-sm font-semibold text-seal hover:underline">
-        &larr; 返回监督列表
+      <Link href={ROLES.others.route} className="text-sm font-semibold text-seal hover:underline">
+        &larr; 返回{ROLES.others.navLabel}列表
       </Link>
 
       <div className="flex items-start justify-between">
