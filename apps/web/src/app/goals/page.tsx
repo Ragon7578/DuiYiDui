@@ -28,6 +28,7 @@ export default function GoalsPage() {
 function GoalsContent() {
   const [goals, setGoals] = useState<Goal[]>([])
   const [loading, setLoading] = useState(true)
+  const [claimingId, setClaimingId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchGoals()
@@ -36,6 +37,19 @@ function GoalsContent() {
   }, [])
 
   if (loading) return <p className="text-muted">加载中...</p>
+
+  const pendingClaim = goals.filter((g) => g.status === "achieved" && !g.rewardClaimed)
+
+  async function handleClaim(id: string) {
+    setClaimingId(id)
+    try {
+      const updated = await claimReward(id)
+      track("claim_reward")
+      setGoals((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))
+    } finally {
+      setClaimingId(null)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -48,16 +62,44 @@ function GoalsContent() {
           创建
         </Link>
       </div>
-      {goals.some((g) => g.status === "achieved" && !g.rewardClaimed) && (
-        <p className="rounded border border-ok/30 bg-ok-soft/50 px-4 py-2 text-sm text-ink">
-          有奖励待兑现——打开对应目标，标记「奖励已兑现」。
-        </p>
+
+      {pendingClaim.length > 0 && (
+        <section className="space-y-3 rounded border border-ok/30 bg-ok-soft/40 p-5">
+          <h2 className="font-display text-lg font-bold text-ink">奖励还在等你兑现</h2>
+          <p className="text-sm text-muted">做到了就去拿奖励，勾掉才算真正闭环。</p>
+          <div className="space-y-2">
+            {pendingClaim.map((g) => (
+              <div
+                key={g.id}
+                className="flex flex-wrap items-center justify-between gap-3 rounded border border-ok/20 bg-white/80 px-4 py-3"
+              >
+                <div>
+                  <p className="font-semibold">{g.title}</p>
+                  <p className="text-sm text-seal">奖励 · {g.reward}</p>
+                </div>
+                <button
+                  type="button"
+                  disabled={claimingId === g.id}
+                  onClick={() => handleClaim(g.id)}
+                  className="btn-primary px-4 py-2 text-sm"
+                >
+                  {claimingId === g.id ? "标记中..." : "标记奖励已兑现"}
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
       )}
+
       <div className="space-y-4">
         {goals.map((g) => (
-          <GoalCard key={g.id} goal={g} onUpdate={(updated) =>
-            setGoals((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))
-          } />
+          <GoalCard
+            key={g.id}
+            goal={g}
+            onUpdate={(updated) =>
+              setGoals((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))
+            }
+          />
         ))}
         {goals.length === 0 && (
           <div className="rounded border border-dashed border-line px-6 py-12 text-center">
@@ -79,6 +121,7 @@ function GoalCard({ goal, onUpdate }: { goal: Goal; onUpdate: (g: Goal) => void 
   const [witnesses, setWitnesses] = useState<GoalWitness[]>([])
   const [users, setUsers] = useState<AuthUser[]>([])
   const [witnessId, setWitnessId] = useState("")
+  const [witnessName, setWitnessName] = useState("")
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
@@ -100,6 +143,17 @@ function GoalCard({ goal, onUpdate }: { goal: Goal; onUpdate: (g: Goal) => void 
     }
   }
 
+  async function handleAchieve() {
+    setBusy(true)
+    try {
+      const updated = await updateGoal(goal.id, { status: "achieved", progress: 100 })
+      if (goal.status !== "achieved") track("achieve_goal")
+      onUpdate(updated)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function handleClaim() {
     setBusy(true)
     try {
@@ -112,7 +166,7 @@ function GoalCard({ goal, onUpdate }: { goal: Goal; onUpdate: (g: Goal) => void 
   }
 
   async function handleAbandon() {
-    if (!confirm("确定放弃这个目标吗？这会影响你的信任分。")) return
+    if (!confirm("确定结束这个承诺吗？会记入履约档案。下次可以换一种承诺再来。")) return
     setBusy(true)
     try {
       const updated = await updateGoal(goal.id, { status: "abandoned" })
@@ -123,13 +177,17 @@ function GoalCard({ goal, onUpdate }: { goal: Goal; onUpdate: (g: Goal) => void 
   }
 
   async function handleAddWitness() {
-    if (!witnessId) return
+    if (!witnessId && !witnessName.trim()) return
     setBusy(true)
     try {
-      const w = await addGoalWitness(goal.id, witnessId)
+      const w = await addGoalWitness(goal.id, {
+        witnessUserId: witnessId || undefined,
+        witnessName: !witnessId ? witnessName.trim() : undefined,
+      })
       track("invite_witness")
       setWitnesses((prev) => [...prev, w])
       setWitnessId("")
+      setWitnessName("")
     } finally {
       setBusy(false)
     }
@@ -139,7 +197,7 @@ function GoalCard({ goal, onUpdate }: { goal: Goal; onUpdate: (g: Goal) => void 
     <Card>
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <h3 className="font-display text-xl font-bold">{goal.title}</h3>
             <Badge status={goal.status} />
           </div>
@@ -149,7 +207,7 @@ function GoalCard({ goal, onUpdate }: { goal: Goal; onUpdate: (g: Goal) => void 
           <div className="mt-3">
             <div className="flex justify-between text-sm">
               <span className="text-muted">进度</span>
-              <span className="font-medium">{goal.progress}%</span>
+              <span className="font-medium tabular-nums">{goal.progress}%</span>
             </div>
             <div className="mt-1 h-1.5 overflow-hidden bg-paper-deep">
               <div
@@ -159,55 +217,62 @@ function GoalCard({ goal, onUpdate }: { goal: Goal; onUpdate: (g: Goal) => void 
             </div>
           </div>
           {goal.status === "active" && (
-            <div className="mt-3 flex gap-2">
+            <div className="mt-3 flex flex-wrap gap-2">
               <button
                 onClick={() => handleProgress(10)}
                 disabled={busy || goal.progress >= 100}
-                className="rounded border border-line px-3 py-1 text-xs hover:bg-gray-50 disabled:opacity-50"
+                className="rounded border border-line px-3 py-1 text-xs font-semibold hover:border-ink disabled:opacity-50"
               >
-                +10%
+                更新进度
+              </button>
+              <button
+                onClick={handleAchieve}
+                disabled={busy}
+                className="rounded border border-ok/40 bg-ok-soft/40 px-3 py-1 text-xs font-semibold text-ok hover:border-ok disabled:opacity-50"
+              >
+                标记已达成
               </button>
               <button
                 onClick={() => handleAbandon()}
                 disabled={busy}
-                className="rounded-lg border border-red-200 px-3 py-1 text-xs text-red-600 hover:bg-red-50 disabled:opacity-50"
+                className="rounded border border-line px-3 py-1 text-xs text-muted hover:border-ink disabled:opacity-50"
               >
-                放弃
+                结束承诺
               </button>
             </div>
           )}
           {(goal.status === "achieved" || goal.status === "reward_claimed") && goal.reward && (
-            <div className="mt-3 flex items-center gap-3">
-              <span className="text-sm text-seal font-medium">
-                {goal.reward}
-                {goal.rewardClaimed ? " ✅ 已兑现" : " ⏳ 待兑现"}
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <span className="text-sm font-medium text-seal">
+                奖励 · {goal.reward}
+                {goal.rewardClaimed ? " · 已兑现" : " · 待兑现"}
               </span>
               {goal.status === "achieved" && !goal.rewardClaimed && (
                 <button
                   onClick={handleClaim}
                   disabled={busy}
-                  className="rounded bg-seal px-3 py-1 text-xs font-semibold text-white hover:bg-ink disabled:opacity-50"
+                  className="btn-primary px-3 py-1 text-xs"
                 >
-                  兑现奖励
+                  标记奖励已兑现
                 </button>
               )}
             </div>
           )}
           {goal.status === "active" && goal.reward && (
-            <p className="mt-2 text-sm text-seal font-medium">奖励: {goal.reward}</p>
+            <p className="mt-2 text-sm font-medium text-seal">奖励 · {goal.reward}</p>
           )}
           <div className="mt-3 flex flex-wrap gap-4 text-xs text-muted">
-            {goal.deadline && <span>截止: {formatDate(goal.deadline)}</span>}
+            {goal.deadline && <span>截止 {formatDate(goal.deadline)}</span>}
             <span>创建于 {formatDate(goal.createdAt)}</span>
             {goal.achievedAt && <span>达成于 {formatDate(goal.achievedAt)}</span>}
           </div>
 
           {goal.status === "active" && (
-            <div className="mt-4 border-t pt-4">
-              <p className="mb-2 text-sm font-medium">见证人（建议 1 人）</p>
-              <p className="mb-2 text-xs text-muted">对方确认后，你达成时对方也会获得成就点 +3</p>
+            <div className="mt-4 space-y-2 border-t border-line pt-4">
+              <p className="text-sm font-semibold">见证人（建议 1 人）</p>
+              <p className="text-xs text-muted">找一个在乎你说到做到的人；对方确认后，你达成时对方也会涨成就点</p>
               {witnesses.length > 0 && (
-                <div className="mb-2 space-y-1">
+                <div className="space-y-1">
                   {witnesses.map((w) => (
                     <div key={w.id} className="flex items-center gap-2 text-sm">
                       <span>{w.witnessName}</span>
@@ -216,25 +281,42 @@ function GoalCard({ goal, onUpdate }: { goal: Goal; onUpdate: (g: Goal) => void 
                   ))}
                 </div>
               )}
-              <div className="flex gap-2">
-                <select
-                  value={witnessId}
-                  onChange={(e) => setWitnessId(e.target.value)}
-                  className="flex-1 rounded-lg border border-gray-300 px-2 py-1 text-sm"
-                >
-                  <option value="">选择见证人</option>
-                  {users.map((u) => (
-                    <option key={u.id} value={u.id}>{u.name}</option>
-                  ))}
-                </select>
-                <button
-                  onClick={handleAddWitness}
-                  disabled={busy || !witnessId}
-                  className="rounded border border-line px-3 py-1 text-sm hover:bg-gray-50 disabled:opacity-50"
-                >
-                  邀请
-                </button>
-              </div>
+              {witnesses.length === 0 && (
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <input
+                    value={witnessName}
+                    onChange={(e) => {
+                      setWitnessName(e.target.value)
+                      if (e.target.value) setWitnessId("")
+                    }}
+                    placeholder="写下名字（可不注册）"
+                    className="input-field flex-1 text-sm"
+                    disabled={Boolean(witnessId)}
+                  />
+                  {users.length > 0 && (
+                    <select
+                      value={witnessId}
+                      onChange={(e) => {
+                        setWitnessId(e.target.value)
+                        if (e.target.value) setWitnessName("")
+                      }}
+                      className="input-field text-sm sm:max-w-[10rem]"
+                    >
+                      <option value="">已注册用户</option>
+                      {users.map((u) => (
+                        <option key={u.id} value={u.id}>{u.name}</option>
+                      ))}
+                    </select>
+                  )}
+                  <button
+                    onClick={handleAddWitness}
+                    disabled={busy || (!witnessId && !witnessName.trim())}
+                    className="rounded border border-line px-3 py-2 text-sm font-semibold hover:border-ink disabled:opacity-50"
+                  >
+                    邀请
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

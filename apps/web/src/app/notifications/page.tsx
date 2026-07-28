@@ -61,18 +61,21 @@ function NotificationsContent() {
     }
   }
 
-  if (loading) return <p className="text-gray-400">加载中...</p>
+  if (loading) return <p className="text-muted">加载中...</p>
 
   const unread = notifications.filter((n) => !n.read).length
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">通知</h1>
+        <div>
+          <h1 className="font-display text-3xl font-black tracking-tight">通知</h1>
+          <p className="mt-1 text-sm text-muted">见证邀约、达成与兑奖提醒</p>
+        </div>
         {unread > 0 && (
           <button
             onClick={handleReadAll}
-            className="text-sm text-blue-600 hover:underline"
+            className="text-sm font-semibold text-seal hover:underline"
           >
             全部标为已读
           </button>
@@ -83,34 +86,34 @@ function NotificationsContent() {
         {notifications.map((n) => (
           <Card
             key={n.id}
-            className={n.read ? "opacity-60" : "border-l-4 border-l-blue-500"}
+            className={n.read ? "opacity-60" : "border-l-4 border-l-seal"}
           >
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1" onClick={() => handleRead(n)}>
                 <p className="font-medium">{n.title}</p>
-                <p className="mt-1 text-sm text-gray-500">{n.message}</p>
-                <p className="mt-2 text-xs text-gray-400">{formatDate(n.createdAt)}</p>
+                <p className="mt-1 text-sm text-muted">{n.message}</p>
+                <p className="mt-2 text-xs text-muted">{formatDate(n.createdAt)}</p>
               </div>
               {n.type === "witness_invite" && n.relatedId && !n.read && (
                 <div className="flex shrink-0 gap-2">
                   <button
                     onClick={() => handleWitnessAction(n, "confirmed")}
-                    className="rounded-lg bg-green-600 px-3 py-1 text-xs text-white hover:bg-green-700"
+                    className="btn-primary px-3 py-1 text-xs"
                   >
-                    接受
+                    接受见证
                   </button>
                   <button
                     onClick={() => handleWitnessAction(n, "declined")}
-                    className="rounded-lg border px-3 py-1 text-xs hover:bg-gray-50"
+                    className="rounded border border-line px-3 py-1 text-xs font-semibold hover:border-ink"
                   >
-                    拒绝
+                    婉拒
                   </button>
                 </div>
               )}
               {n.relatedId && n.type !== "witness_invite" && (
                 <Link
                   href={n.type.includes("goal") || n.type.includes("reward") ? "/goals" : "/contracts"}
-                  className="shrink-0 text-xs text-blue-600 hover:underline"
+                  className="shrink-0 text-xs font-semibold text-seal hover:underline"
                   onClick={() => handleRead(n)}
                 >
                   查看
@@ -120,7 +123,12 @@ function NotificationsContent() {
           </Card>
         ))}
         {notifications.length === 0 && (
-          <p className="text-sm text-gray-400">暂无通知</p>
+          <div className="rounded border border-dashed border-line px-6 py-12 text-center">
+            <p className="font-display text-lg font-bold">还没有消息</p>
+            <p className="mt-2 text-sm text-muted">
+              有人请你见证，或目标达成需要兑奖时，会在这里出现。
+            </p>
+          </div>
         )}
       </div>
     </div>

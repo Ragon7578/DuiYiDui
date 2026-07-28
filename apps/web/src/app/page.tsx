@@ -189,14 +189,7 @@ function HomeDashboard() {
         </section>
       )}
 
-      <section className="grid grid-cols-2 gap-3 animate-rise-delay-1 lg:grid-cols-4 lg:gap-4">
-        <StatsCard label="信任分" value={user.trustScore} description="履约档案" accent />
-        <StatsCard label="目标" value={`${user.achievedGoals}/${user.totalGoals}`} description="已达成 / 总数" />
-        <StatsCard label="契约" value={`${user.fulfilledContracts}/${user.totalContracts}`} description="已履行 / 总数" />
-        <StatsCard label="进行中" value={activeGoals.length + activeContracts.length} description="目标 + 契约" />
-      </section>
-
-      <section className="animate-rise-delay-2 space-y-4">
+      <section className="animate-rise-delay-1 space-y-4">
         <div className="flex items-end justify-between border-b border-line pb-3">
           <h2 className="font-display text-2xl font-bold tracking-tight">进行中的目标</h2>
           <Link href="/goals" className="text-sm font-semibold text-seal hover:underline">
@@ -238,6 +231,13 @@ function HomeDashboard() {
         </div>
       </section>
 
+      <section className="grid grid-cols-2 gap-3 animate-rise-delay-2 lg:grid-cols-4 lg:gap-4">
+        <StatsCard label="信任分" value={user.trustScore} description="履约档案" accent />
+        <StatsCard label="目标" value={`${user.achievedGoals}/${user.totalGoals}`} description="已达成 / 总数" />
+        <StatsCard label="契约" value={`${user.fulfilledContracts}/${user.totalContracts}`} description="已履行 / 总数" />
+        <StatsCard label="进行中" value={activeGoals.length + activeContracts.length} description="目标 + 契约" />
+      </section>
+
       <section className="animate-rise-delay-3 space-y-4">
         <div className="flex items-end justify-between border-b border-line pb-3">
           <h2 className="font-display text-2xl font-bold tracking-tight">进行中的契约</h2>
@@ -265,7 +265,9 @@ function HomeDashboard() {
             </Link>
           ))}
           {activeContracts.length === 0 && (
-            <p className="py-8 text-center text-sm text-muted">暂无进行中的契约</p>
+            <p className="py-8 text-center text-sm text-muted">
+              暂无进行中的契约。契约是与他人的约定，可稍后再建。
+            </p>
           )}
         </div>
       </section>

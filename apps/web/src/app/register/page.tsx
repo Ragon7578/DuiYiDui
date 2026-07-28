@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Card } from "@/components/ui/card"
@@ -16,9 +16,13 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  const goingOnboarding = useRef(false)
 
   useEffect(() => {
-    if (!authLoading && user) router.replace("/")
+    // 注册成功会先 set user，再 push onboarding；勿抢跑回首页
+    if (!authLoading && user && !goingOnboarding.current) {
+      router.replace("/")
+    }
   }, [authLoading, user, router])
 
   async function handleSubmit(e: React.FormEvent) {
@@ -36,9 +40,11 @@ export default function RegisterPage() {
 
     setLoading(true)
     try {
+      goingOnboarding.current = true
       await register(username.trim(), password, confirmPassword)
-      router.push("/create?onboarding=1")
+      router.replace("/create?onboarding=1")
     } catch (err) {
+      goingOnboarding.current = false
       setError(err instanceof ApiError ? err.message : "注册失败")
     } finally {
       setLoading(false)

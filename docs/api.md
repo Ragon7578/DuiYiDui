@@ -200,8 +200,8 @@ Query：`limit`（默认 50，最大 200）。
 
 ### `POST /api/events`
 
-Body：`{ "name": "register"|"create_goal"|… , "props?" }`  
-用于注册、建目标、兑奖、提交反馈等计数；具体事件名见前端 `apps/web/src/lib/analytics.ts`。
+Body：`{ "event": "register"|"create_goal"|… , "payload?" }`  
+用于注册、建目标、达成、兑奖、提交反馈等计数；具体事件名见前端 `apps/web/src/lib/analytics.ts`。
 
 ---
 

@@ -45,6 +45,8 @@ router.post("/", requireAuth, (req, res) => {
     if (witness) {
       addWitness(id, input.witnessUserId, witness.name, userId)
     }
+  } else if (input.witnessName && String(input.witnessName).trim()) {
+    addWitness(id, null, String(input.witnessName).trim(), userId)
   }
 
   const row = db.prepare("SELECT * FROM goals WHERE id = ?").get(id) as any

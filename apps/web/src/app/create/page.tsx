@@ -105,10 +105,16 @@ function CreateContent() {
   return (
     <div className="mx-auto max-w-2xl space-y-8 animate-rise">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-seal">New</p>
-        <h1 className="mt-1 font-display text-3xl font-black tracking-tight">创建</h1>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-seal">
+          {onboarding ? "First" : "New"}
+        </p>
+        <h1 className="mt-1 font-display text-3xl font-black tracking-tight">
+          {onboarding ? "写下第一个目标" : "创建"}
+        </h1>
         <p className="mt-2 text-sm text-muted">
-          先写清「要做到什么」和「做到了奖励自己什么」。语音识别可选，填表同样完整。
+          {onboarding
+            ? "一件事一屏：写清「要做到什么」和「做到了奖励自己什么」。"
+            : "先写清「要做到什么」和「做到了奖励自己什么」。语音识别可选，填表同样完整。"}
         </p>
       </div>
 
@@ -116,119 +122,123 @@ function CreateContent() {
         <div className="rounded border border-seal/25 bg-seal-soft/50 px-4 py-3 text-sm text-ink">
           <p className="font-semibold">欢迎加入兑一兑</p>
           <p className="mt-1 text-muted">
-            建议先创建一个带奖励的目标。可选邀请 1 位见证人——找一个在乎你说到做到的人。
+            先创建一个带奖励的目标。可选写下 1 位见证人——找一个在乎你说到做到的人。
           </p>
         </div>
       )}
 
-      <Card className="space-y-4 border-ink/10 bg-white/90">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h2 className="font-display text-xl font-bold">智能录入（可选）</h2>
-            <p className="mt-1 text-xs text-muted">
-              说：「如果我连续跑步30天，就奖励自己一双跑鞋，截止日期8月15日」
-            </p>
+      {!onboarding && (
+        <Card className="space-y-4 border-ink/10 bg-white/90">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="font-display text-xl font-bold">智能录入（可选）</h2>
+              <p className="mt-1 text-xs text-muted">
+                说：「如果我连续跑步30天，就奖励自己一双跑鞋，截止日期8月15日」
+              </p>
+            </div>
           </div>
-        </div>
 
-        <VoiceInput value={draftText} onChange={setDraftText} />
+          <VoiceInput value={draftText} onChange={setDraftText} />
 
-        <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={handleParse}
+              disabled={parsing || !draftText.trim()}
+              className="btn-primary px-4 py-2 text-sm disabled:opacity-50"
+            >
+              {parsing ? "识别中..." : "识别并填入表单"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setDraftText("")
+                setParsedGoals([])
+                setParsedContracts([])
+                setParseError("")
+              }}
+              className="rounded border border-line bg-white/80 px-4 py-2 text-sm font-semibold hover:border-ink"
+            >
+              清空
+            </button>
+          </div>
+
+          {parseError && (
+            <p className="rounded border border-seal/30 bg-seal-soft px-3 py-2 text-sm text-seal">
+              {parseError}
+            </p>
+          )}
+
+          {parsedGoals.length > 1 && (
+            <div className="space-y-2 border-t border-line pt-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted">
+                识别到多个目标 · 点击填入
+              </p>
+              {parsedGoals.map((g, i) => (
+                <button
+                  key={`${g.title}-${i}`}
+                  type="button"
+                  onClick={() => applyGoal(g)}
+                  className="panel-interactive flex w-full items-start justify-between gap-3 rounded border border-line bg-white/80 px-3 py-2 text-left"
+                >
+                  <div>
+                    <p className="font-semibold text-ink">{g.title}</p>
+                    <p className="text-xs text-seal">奖励 · {g.reward}</p>
+                  </div>
+                  <span className="text-xs text-muted">填入</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {parsedContracts.length > 1 && (
+            <div className="space-y-2 border-t border-line pt-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted">
+                识别到多份契约 · 点击填入
+              </p>
+              {parsedContracts.map((c, i) => (
+                <button
+                  key={`${c.title}-${i}`}
+                  type="button"
+                  onClick={() => applyContract(c)}
+                  className="panel-interactive flex w-full items-start justify-between gap-3 rounded border border-line bg-white/80 px-3 py-2 text-left"
+                >
+                  <div>
+                    <p className="font-semibold text-ink">{c.title}</p>
+                    <p className="text-xs text-muted">{c.parties.join("、")}</p>
+                  </div>
+                  <span className="text-xs text-muted">填入</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
+
+      {!onboarding && (
+        <div className="flex gap-2 border-b border-line pb-3">
           <button
-            type="button"
-            onClick={handleParse}
-            disabled={parsing || !draftText.trim()}
-            className="btn-primary px-4 py-2 text-sm disabled:opacity-50"
+            onClick={() => setMode("goal")}
+            className={`relative px-4 py-2 text-sm font-semibold transition ${
+              mode === "goal" ? "text-ink" : "text-muted hover:text-ink"
+            }`}
           >
-            {parsing ? "识别中..." : "识别并填入表单"}
+            创建目标
+            {mode === "goal" && <span className="absolute inset-x-2 -bottom-3 h-0.5 bg-seal" />}
           </button>
           <button
-            type="button"
-            onClick={() => {
-              setDraftText("")
-              setParsedGoals([])
-              setParsedContracts([])
-              setParseError("")
-            }}
-            className="rounded border border-line bg-white/80 px-4 py-2 text-sm font-semibold hover:border-ink"
+            onClick={() => setMode("contract")}
+            className={`relative px-4 py-2 text-sm font-semibold transition ${
+              mode === "contract" ? "text-ink" : "text-muted hover:text-ink"
+            }`}
           >
-            清空
+            创建契约
+            {mode === "contract" && <span className="absolute inset-x-2 -bottom-3 h-0.5 bg-seal" />}
           </button>
         </div>
+      )}
 
-        {parseError && (
-          <p className="rounded border border-seal/30 bg-seal-soft px-3 py-2 text-sm text-seal">
-            {parseError}
-          </p>
-        )}
-
-        {parsedGoals.length > 1 && (
-          <div className="space-y-2 border-t border-line pt-3">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted">
-              识别到多个目标 · 点击填入
-            </p>
-            {parsedGoals.map((g, i) => (
-              <button
-                key={`${g.title}-${i}`}
-                type="button"
-                onClick={() => applyGoal(g)}
-                className="panel-interactive flex w-full items-start justify-between gap-3 rounded border border-line bg-white/80 px-3 py-2 text-left"
-              >
-                <div>
-                  <p className="font-semibold text-ink">{g.title}</p>
-                  <p className="text-xs text-seal">奖励 · {g.reward}</p>
-                </div>
-                <span className="text-xs text-muted">填入</span>
-              </button>
-            ))}
-          </div>
-        )}
-
-        {parsedContracts.length > 1 && (
-          <div className="space-y-2 border-t border-line pt-3">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted">
-              识别到多份契约 · 点击填入
-            </p>
-            {parsedContracts.map((c, i) => (
-              <button
-                key={`${c.title}-${i}`}
-                type="button"
-                onClick={() => applyContract(c)}
-                className="panel-interactive flex w-full items-start justify-between gap-3 rounded border border-line bg-white/80 px-3 py-2 text-left"
-              >
-                <div>
-                  <p className="font-semibold text-ink">{c.title}</p>
-                  <p className="text-xs text-muted">{c.parties.join("、")}</p>
-                </div>
-                <span className="text-xs text-muted">填入</span>
-              </button>
-            ))}
-          </div>
-        )}
-      </Card>
-
-      <div className="flex gap-2 border-b border-line pb-3">
-        <button
-          onClick={() => setMode("goal")}
-          className={`relative px-4 py-2 text-sm font-semibold transition ${
-            mode === "goal" ? "text-ink" : "text-muted hover:text-ink"
-          }`}
-        >
-          创建目标
-          {mode === "goal" && <span className="absolute inset-x-2 -bottom-3 h-0.5 bg-seal" />}
-        </button>
-        <button
-          onClick={() => setMode("contract")}
-          className={`relative px-4 py-2 text-sm font-semibold transition ${
-            mode === "contract" ? "text-ink" : "text-muted hover:text-ink"
-          }`}
-        >
-          创建契约
-          {mode === "contract" && <span className="absolute inset-x-2 -bottom-3 h-0.5 bg-seal" />}
-        </button>
-      </div>
-
-      {mode === "goal" ? (
+      {mode === "goal" || onboarding ? (
         <GoalForm key={`goal-${applyKey}`} seed={seedGoal} onboarding={onboarding} />
       ) : (
         <ContractForm key={`contract-${applyKey}`} seed={seedContract} />
@@ -250,6 +260,7 @@ function GoalForm({
   const [reward, setReward] = useState(seed?.reward || "")
   const [deadline, setDeadline] = useState(seed?.deadline || "")
   const [witnessUserId, setWitnessUserId] = useState("")
+  const [witnessName, setWitnessName] = useState("")
   const [users, setUsers] = useState<AuthUser[]>([])
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
@@ -263,16 +274,21 @@ function GoalForm({
     setError("")
     setLoading(true)
     try {
+      const nameOnly = !witnessUserId && witnessName.trim() ? witnessName.trim() : undefined
       await createGoal({
         title,
         description: description || undefined,
         reward,
         deadline: deadline || undefined,
         witnessUserId: witnessUserId || undefined,
+        witnessName: nameOnly,
       })
-      track("create_goal", { hasWitness: Boolean(witnessUserId), onboarding: Boolean(onboarding) })
-      if (witnessUserId) track("invite_witness")
-      router.push("/goals")
+      track("create_goal", {
+        hasWitness: Boolean(witnessUserId || nameOnly),
+        onboarding: Boolean(onboarding),
+      })
+      if (witnessUserId || nameOnly) track("invite_witness")
+      router.push(onboarding ? "/" : "/goals")
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "创建失败")
     } finally {
@@ -312,16 +328,18 @@ function GoalForm({
           />
           <p className="mt-1 text-xs text-muted">奖励写清楚，达成后才兑得了——这是产品核心，不是备注。</p>
         </div>
-        <div>
-          <FormLabel>描述</FormLabel>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="具体要做些什么？（选填）"
-            rows={3}
-            className="input-field"
-          />
-        </div>
+        {!onboarding && (
+          <div>
+            <FormLabel>描述</FormLabel>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="具体要做些什么？（选填）"
+              rows={3}
+              className="input-field"
+            />
+          </div>
+        )}
         <div>
           <FormLabel>截止日期</FormLabel>
           <input
@@ -331,20 +349,35 @@ function GoalForm({
             className="input-field"
           />
         </div>
-        <div>
+        <div className="space-y-3">
           <FormLabel>见证人（建议 1 人，可不选）</FormLabel>
-          <select
-            value={witnessUserId}
-            onChange={(e) => setWitnessUserId(e.target.value)}
+          <input
+            value={witnessName}
+            onChange={(e) => {
+              setWitnessName(e.target.value)
+              if (e.target.value) setWitnessUserId("")
+            }}
+            placeholder="写下名字，例如：小陈（对方尚未注册也可）"
             className="input-field"
-          >
-            <option value="">稍后再邀请</option>
-            {users.map((u) => (
-              <option key={u.id} value={u.id}>{u.name}</option>
-            ))}
-          </select>
-          <p className="mt-1 text-xs text-muted">
-            找一个在乎你说到做到的人；对方确认见证后，你达成时对方也会获得成就点（信任分 +3）。
+            disabled={Boolean(witnessUserId)}
+          />
+          {users.length > 0 && (
+            <select
+              value={witnessUserId}
+              onChange={(e) => {
+                setWitnessUserId(e.target.value)
+                if (e.target.value) setWitnessName("")
+              }}
+              className="input-field"
+            >
+              <option value="">或选择已注册用户</option>
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>{u.name}</option>
+              ))}
+            </select>
+          )}
+          <p className="text-xs text-muted">
+            找一个在乎你说到做到的人。已注册用户确认后，你达成时对方也会涨成就点；仅写名字可先记下，稍后邀请对方注册确认。
           </p>
         </div>
         <button
@@ -431,7 +464,7 @@ function ContractForm({ seed }: { seed?: ParsedContract | null }) {
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="例如：合作协议"
+            placeholder="例如：合作约定"
             className="input-field"
             required
           />

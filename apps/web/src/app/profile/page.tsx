@@ -188,7 +188,12 @@ function ProfileContent() {
             </div>
           ))}
           {goals.length === 0 && (
-            <p className="text-sm text-muted">暂无目标记录</p>
+            <p className="text-sm text-muted">
+              还没有目标。{" "}
+              <Link href="/create" className="font-semibold text-seal hover:underline">
+                写下一件要对得起自己的事
+              </Link>
+            </p>
           )}
         </div>
       </Card>
