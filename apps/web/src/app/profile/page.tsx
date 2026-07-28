@@ -139,14 +139,14 @@ function ProfileContent() {
 
       <section className="grid grid-cols-2 gap-4">
         <StatsCard label="信任分" value={user.trustScore} description="满分 100" accent />
-        <StatsCard label="总目标" value={user.totalGoals} />
-        <StatsCard label="已达成" value={user.achievedGoals} />
-        <StatsCard label="已放弃" value={user.abandonedGoals} />
+        <StatsCard label="我的 · 总数" value={user.totalGoals} />
+        <StatsCard label="我的 · 已达成" value={user.achievedGoals} />
+        <StatsCard label="我的 · 已放弃" value={user.abandonedGoals} />
       </section>
 
       <section className="grid grid-cols-2 gap-4">
-        <StatsCard label="总契约" value={user.totalContracts} />
-        <StatsCard label="已履行" value={user.fulfilledContracts} />
+        <StatsCard label="监督 · 总数" value={user.totalContracts} />
+        <StatsCard label="监督 · 已履行" value={user.fulfilledContracts} />
       </section>
 
       <Card>
@@ -154,7 +154,7 @@ function ProfileContent() {
         <div className="space-y-4">
           <div>
             <div className="flex justify-between text-sm">
-              <span>目标达成率</span>
+              <span>承诺达成率</span>
               <span className="font-medium">{achievedRate}%</span>
             </div>
             <div className="mt-1 h-1.5 overflow-hidden bg-paper-deep">
@@ -163,7 +163,7 @@ function ProfileContent() {
           </div>
           <div>
             <div className="flex justify-between text-sm">
-              <span>目标放弃率</span>
+              <span>承诺放弃率</span>
               <span className="font-medium">{abandonRate}%</span>
             </div>
             <div className="mt-1 h-1.5 overflow-hidden bg-paper-deep">
@@ -174,7 +174,7 @@ function ProfileContent() {
       </Card>
 
       <Card>
-        <h2 className="mb-3 font-semibold">目标记录</h2>
+        <h2 className="mb-3 font-semibold">我的 · 记录</h2>
         <div className="space-y-3">
           {goals.map((g) => (
             <div key={g.id} className="flex items-center justify-between border-b border-line pb-2 last:border-0">
@@ -188,7 +188,7 @@ function ProfileContent() {
             </div>
           ))}
           {goals.length === 0 && (
-            <p className="text-sm text-muted">暂无目标记录</p>
+            <p className="text-sm text-muted">暂无承诺记录</p>
           )}
         </div>
       </Card>

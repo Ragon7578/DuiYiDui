@@ -23,6 +23,13 @@ export function getDb(): DatabaseSync {
   return db
 }
 
+function tableExists(name: string): boolean {
+  const row = db
+    .prepare("SELECT 1 AS ok FROM sqlite_master WHERE type = 'table' AND name = ?")
+    .get(name) as { ok: number } | undefined
+  return Boolean(row)
+}
+
 function initSchema() {
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
@@ -41,49 +48,70 @@ function initSchema() {
       bio TEXT NOT NULL DEFAULT ''
     );
 
-    CREATE TABLE IF NOT EXISTS goals (
+    -- Self 域：对自己的承诺 + 奖励兑现
+    CREATE TABLE IF NOT EXISTS self_commitments (
       id TEXT PRIMARY KEY,
+      owner_user_id TEXT NOT NULL,
       title TEXT NOT NULL,
       description TEXT,
       reward TEXT NOT NULL,
       reward_claimed INTEGER NOT NULL DEFAULT 0,
       deadline TEXT,
-      status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','achieved','reward_claimed','abandoned')),
+      status TEXT NOT NULL DEFAULT 'active'
+        CHECK(status IN ('active','achieved','reward_claimed','abandoned')),
       progress INTEGER NOT NULL DEFAULT 0 CHECK(progress >= 0 AND progress <= 100),
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       achieved_at TEXT,
-      user_id TEXT NOT NULL,
-      FOREIGN KEY (user_id) REFERENCES users(id)
+      FOREIGN KEY (owner_user_id) REFERENCES users(id)
     );
 
-    CREATE TABLE IF NOT EXISTS contracts (
+    -- Supervise 域：多方约定（参与方必须是真实用户）
+    CREATE TABLE IF NOT EXISTS supervise_agreements (
       id TEXT PRIMARY KEY,
+      created_by_user_id TEXT NOT NULL,
       title TEXT NOT NULL,
       description TEXT NOT NULL DEFAULT '',
-      status TEXT NOT NULL DEFAULT 'draft' CHECK(status IN ('draft','active','completed','breached','cancelled')),
+      status TEXT NOT NULL DEFAULT 'draft'
+        CHECK(status IN ('draft','active','completed','breached','cancelled')),
       reward TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-      signed_at TEXT
+      signed_at TEXT,
+      FOREIGN KEY (created_by_user_id) REFERENCES users(id)
     );
 
-    CREATE TABLE IF NOT EXISTS parties (
-      id TEXT NOT NULL,
-      contract_id TEXT NOT NULL,
-      name TEXT NOT NULL,
+    CREATE TABLE IF NOT EXISTS supervise_parties (
+      agreement_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      display_name TEXT NOT NULL,
       role TEXT NOT NULL CHECK(role IN ('promisor','promisee','both')),
       signed_at TEXT,
-      PRIMARY KEY (id, contract_id),
-      FOREIGN KEY (contract_id) REFERENCES contracts(id) ON DELETE CASCADE
+      PRIMARY KEY (agreement_id, user_id),
+      FOREIGN KEY (agreement_id) REFERENCES supervise_agreements(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users(id)
     );
 
-    CREATE TABLE IF NOT EXISTS clauses (
+    CREATE TABLE IF NOT EXISTS supervise_clauses (
       id TEXT PRIMARY KEY,
-      contract_id TEXT NOT NULL,
+      agreement_id TEXT NOT NULL,
       content TEXT NOT NULL,
-      status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','fulfilled','breached')),
+      status TEXT NOT NULL DEFAULT 'pending'
+        CHECK(status IN ('pending','fulfilled','breached')),
       due_date TEXT,
-      FOREIGN KEY (contract_id) REFERENCES contracts(id) ON DELETE CASCADE
+      FOREIGN KEY (agreement_id) REFERENCES supervise_agreements(id) ON DELETE CASCADE
+    );
+
+    -- 监督侧见证：盯「我的」承诺；见证人必须是真实用户
+    CREATE TABLE IF NOT EXISTS supervise_witnesses (
+      id TEXT PRIMARY KEY,
+      commitment_id TEXT NOT NULL,
+      witness_user_id TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending'
+        CHECK(status IN ('pending','confirmed','declined')),
+      invited_at TEXT NOT NULL DEFAULT (datetime('now')),
+      confirmed_at TEXT,
+      FOREIGN KEY (commitment_id) REFERENCES self_commitments(id) ON DELETE CASCADE,
+      FOREIGN KEY (witness_user_id) REFERENCES users(id)
     );
 
     CREATE TABLE IF NOT EXISTS pledges (
@@ -108,18 +136,6 @@ function initSchema() {
       read INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-    );
-
-    CREATE TABLE IF NOT EXISTS goal_witnesses (
-      id TEXT PRIMARY KEY,
-      goal_id TEXT NOT NULL,
-      witness_user_id TEXT,
-      witness_name TEXT NOT NULL,
-      status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','confirmed','declined')),
-      invited_at TEXT NOT NULL DEFAULT (datetime('now')),
-      confirmed_at TEXT,
-      FOREIGN KEY (goal_id) REFERENCES goals(id) ON DELETE CASCADE,
-      FOREIGN KEY (witness_user_id) REFERENCES users(id)
     );
 
     CREATE TABLE IF NOT EXISTS feedback (
@@ -167,4 +183,115 @@ function migrateSchema() {
   if (!pledgeCols.some((c) => c.name === "user_id")) {
     db.exec("ALTER TABLE pledges ADD COLUMN user_id TEXT")
   }
+
+  migrateLegacyDomainTables()
+}
+
+/** 将旧 goals/contracts/parties/clauses/goal_witnesses 迁入 Self / Supervise 表后删除旧表 */
+function migrateLegacyDomainTables() {
+  const hasLegacyGoals = tableExists("goals")
+  const hasLegacyContracts = tableExists("contracts")
+
+  if (!hasLegacyGoals && !hasLegacyContracts && !tableExists("goal_witnesses")) {
+    return
+  }
+
+  const selfCount = (
+    db.prepare("SELECT COUNT(*) AS n FROM self_commitments").get() as { n: number }
+  ).n
+
+  if (hasLegacyGoals && selfCount === 0) {
+    db.exec(`
+      INSERT INTO self_commitments (
+        id, owner_user_id, title, description, reward, reward_claimed,
+        deadline, status, progress, created_at, achieved_at
+      )
+      SELECT
+        id, user_id, title, description, reward, reward_claimed,
+        deadline, status, progress, created_at, achieved_at
+      FROM goals
+    `)
+    console.log("[db] migrated goals → self_commitments")
+  }
+
+  if (hasLegacyContracts) {
+    const agreeCount = (
+      db.prepare("SELECT COUNT(*) AS n FROM supervise_agreements").get() as { n: number }
+    ).n
+    if (agreeCount === 0) {
+      db.exec(`
+        INSERT INTO supervise_agreements (
+          id, created_by_user_id, title, description, status, reward,
+          created_at, updated_at, signed_at
+        )
+        SELECT
+          c.id,
+          COALESCE(
+            (SELECT p.id FROM parties p
+             WHERE p.contract_id = c.id AND p.id IN (SELECT id FROM users)
+             ORDER BY CASE p.role WHEN 'promisor' THEN 0 ELSE 1 END
+             LIMIT 1),
+            (SELECT id FROM users LIMIT 1)
+          ),
+          c.title, c.description, c.status, c.reward,
+          c.created_at, c.updated_at, c.signed_at
+        FROM contracts c
+      `)
+
+      if (tableExists("parties")) {
+        db.exec(`
+          INSERT OR IGNORE INTO supervise_parties (
+            agreement_id, user_id, display_name, role, signed_at
+          )
+          SELECT p.contract_id, p.id, p.name, p.role, p.signed_at
+          FROM parties p
+          WHERE p.id IN (SELECT id FROM users)
+        `)
+      }
+
+      if (tableExists("clauses")) {
+        db.exec(`
+          INSERT INTO supervise_clauses (id, agreement_id, content, status, due_date)
+          SELECT id, contract_id, content, status, due_date FROM clauses
+        `)
+      }
+      console.log("[db] migrated contracts → supervise_agreements")
+    }
+  }
+
+  if (tableExists("goal_witnesses")) {
+    const wCount = (
+      db.prepare("SELECT COUNT(*) AS n FROM supervise_witnesses").get() as { n: number }
+    ).n
+    if (wCount === 0) {
+      db.exec(`
+        INSERT INTO supervise_witnesses (
+          id, commitment_id, witness_user_id, status, invited_at, confirmed_at
+        )
+        SELECT
+          id, goal_id, witness_user_id, status, invited_at, confirmed_at
+        FROM goal_witnesses
+        WHERE witness_user_id IS NOT NULL
+          AND witness_user_id IN (SELECT id FROM users)
+          AND goal_id IN (SELECT id FROM self_commitments)
+      `)
+      console.log("[db] migrated goal_witnesses → supervise_witnesses")
+    }
+  }
+
+  // 旧表不再使用；DROP 顺序注意 FK
+  db.exec("PRAGMA foreign_keys=OFF")
+  for (const name of [
+    "goal_witnesses",
+    "clauses",
+    "parties",
+    "contracts",
+    "goals",
+  ]) {
+    if (tableExists(name)) {
+      db.exec(`DROP TABLE IF EXISTS ${name}`)
+      console.log(`[db] dropped legacy table ${name}`)
+    }
+  }
+  db.exec("PRAGMA foreign_keys=ON")
 }

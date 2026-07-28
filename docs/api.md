@@ -79,7 +79,7 @@ Body：`{ "token", "password", "confirmPassword?" }`
 
 ---
 
-## 目标 `/api/goals`
+## 目标 `/api/goals`（Self 域 · 物理表 `self_commitments`）
 
 均需鉴权；列表/写操作按当前用户隔离。
 
@@ -117,7 +117,7 @@ Body：`{ "token", "password", "confirmPassword?" }`
 
 ---
 
-## 契约 `/api/contracts`
+## 契约 `/api/contracts`（Supervise 域 · 物理表 `supervise_*`；参与方须为真实用户）
 
 | 方法 | 路径 | 说明 |
 |------|------|------|

@@ -52,7 +52,7 @@ export default function RegisterPage() {
           兑一兑
         </p>
         <h1 className="mt-4 font-display text-2xl font-bold">注册</h1>
-        <p className="mt-2 text-sm text-muted">用户名 + 密码即可开始。写下目标与奖励，说到做到。</p>
+        <p className="mt-2 text-sm text-muted">用户名 + 密码即可开始。写下承诺与奖励，说到做到。</p>
       </div>
 
       <Card className="animate-rise-delay-1">
@@ -110,7 +110,7 @@ export default function RegisterPage() {
             disabled={loading}
             className="btn-primary w-full py-2.5 text-sm"
           >
-            {loading ? "注册中..." : "注册并创建第一个目标"}
+            {loading ? "注册中..." : "注册并写下第一条承诺"}
           </button>
           <p className="text-center text-xs text-muted">
             注册即表示你已阅读{" "}

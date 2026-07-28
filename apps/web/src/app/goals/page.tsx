@@ -41,16 +41,16 @@ function GoalsContent() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl font-black tracking-tight">我的目标</h1>
-          <p className="mt-1 text-sm text-muted">对自己的承诺 · 奖励要兑得了</p>
+          <h1 className="font-display text-3xl font-black tracking-tight">我的</h1>
+          <p className="mt-1 text-sm text-muted">对自己的承诺 · 做到了，兑一兑</p>
         </div>
-        <Link href="/create" className="btn-primary px-4 py-2 text-sm">
+        <Link href="/create?set=self" className="btn-primary px-4 py-2 text-sm">
           创建
         </Link>
       </div>
       {goals.some((g) => g.status === "achieved" && !g.rewardClaimed) && (
         <p className="rounded border border-ok/30 bg-ok-soft/50 px-4 py-2 text-sm text-ink">
-          有奖励待兑现——打开对应目标，标记「奖励已兑现」。
+          有奖励待兑现——打开对应承诺，标记「奖励已兑现」。
         </p>
       )}
       <div className="space-y-4">
@@ -61,12 +61,12 @@ function GoalsContent() {
         ))}
         {goals.length === 0 && (
           <div className="rounded border border-dashed border-line px-6 py-12 text-center">
-            <p className="font-display text-lg font-bold">还没有目标</p>
+            <p className="font-display text-lg font-bold">还没有承诺</p>
             <p className="mt-2 text-sm text-muted">
               写下一件要对得起自己的事，并想好奖励。
             </p>
-            <Link href="/create" className="btn-primary mt-4 inline-block px-4 py-2 text-sm">
-              创建带奖励的目标
+            <Link href="/create?set=self" className="btn-primary mt-4 inline-block px-4 py-2 text-sm">
+              写下第一条「我的」承诺
             </Link>
           </div>
         )}
@@ -83,8 +83,10 @@ function GoalCard({ goal, onUpdate }: { goal: Goal; onUpdate: (g: Goal) => void 
 
   useEffect(() => {
     fetchGoalWitnesses(goal.id).then(setWitnesses).catch(() => {})
-    fetchUsers().then(setUsers).catch(() => {})
-  }, [goal.id])
+    fetchUsers()
+      .then((list) => setUsers(list.filter((u) => u.id !== goal.userId)))
+      .catch(() => {})
+  }, [goal.id, goal.userId])
 
   async function handleProgress(delta: number) {
     const progress = Math.min(100, Math.max(0, goal.progress + delta))
@@ -112,7 +114,7 @@ function GoalCard({ goal, onUpdate }: { goal: Goal; onUpdate: (g: Goal) => void 
   }
 
   async function handleAbandon() {
-    if (!confirm("确定放弃这个目标吗？这会影响你的信任分。")) return
+    if (!confirm("确定放弃这条承诺吗？这会影响你的信任分。")) return
     setBusy(true)
     try {
       const updated = await updateGoal(goal.id, { status: "abandoned" })

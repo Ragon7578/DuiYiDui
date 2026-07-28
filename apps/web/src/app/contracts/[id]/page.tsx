@@ -28,7 +28,7 @@ function ContractDetailContent() {
   useEffect(() => {
     fetchContract(id)
       .then(setContract)
-      .catch(() => setError("契约不存在"))
+      .catch(() => setError("监督约定不存在"))
       .finally(() => setLoading(false))
   }, [id])
 
@@ -37,17 +37,19 @@ function ContractDetailContent() {
     setContract(updated)
   }
 
-  if (loading) return <p className="text-gray-400">加载中...</p>
-  if (error || !contract) return <p className="text-red-500">{error || "未找到"}</p>
+  if (loading) return <p className="text-muted">加载中...</p>
+  if (error || !contract) return <p className="text-seal">{error || "未找到"}</p>
 
   return (
     <div className="space-y-6">
-      <Link href="/contracts" className="text-sm text-blue-600 hover:underline">&larr; 返回契约列表</Link>
+      <Link href="/contracts" className="text-sm font-semibold text-seal hover:underline">
+        &larr; 返回监督列表
+      </Link>
 
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold">{contract.title}</h1>
-          <p className="mt-1 text-gray-500">{contract.description}</p>
+          <h1 className="font-display text-2xl font-bold tracking-tight">{contract.title}</h1>
+          <p className="mt-1 text-muted">{contract.description}</p>
         </div>
         <Badge status={contract.status} />
       </div>

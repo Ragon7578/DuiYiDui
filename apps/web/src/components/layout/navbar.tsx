@@ -6,10 +6,11 @@ import { useEffect, useRef, useState } from "react"
 import { useAuth } from "@/lib/auth-context"
 import { fetchUnreadCount } from "@/lib/api-client"
 
+/** 顶层按角色：我的(Self) / 监督(Supervise)；路由暂仍用 goals/contracts */
 const mainLinks = [
   { href: "/", label: "首页" },
-  { href: "/goals", label: "目标" },
-  { href: "/contracts", label: "契约" },
+  { href: "/goals", label: "我的" },
+  { href: "/contracts", label: "监督" },
   { href: "/create", label: "创建" },
 ]
 

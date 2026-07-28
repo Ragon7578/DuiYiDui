@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card"
 import { FormLabel } from "@/components/ui/form-label"
 import { AuthGuard } from "@/components/layout/auth-guard"
 import { VoiceInput } from "@/components/create/voice-input"
+import { useAuth } from "@/lib/auth-context"
 import {
   createGoal,
   createContract,
@@ -31,9 +32,13 @@ export default function CreatePage() {
 }
 
 function CreateContent() {
+  const router = useRouter()
   const searchParams = useSearchParams()
   const onboarding = searchParams.get("onboarding") === "1"
-  const [mode, setMode] = useState<CreateMode>("goal")
+  const setParam = searchParams.get("set")
+  const initialMode: CreateMode =
+    setParam === "supervise" || setParam === "contract" ? "contract" : "goal"
+  const [mode, setMode] = useState<CreateMode>(initialMode)
   const [draftText, setDraftText] = useState("")
   const [parsing, setParsing] = useState(false)
   const [parseError, setParseError] = useState("")
@@ -44,8 +49,20 @@ function CreateContent() {
   const [seedContract, setSeedContract] = useState<ParsedContract | null>(null)
 
   useEffect(() => {
-    track("page_create", { onboarding })
-  }, [onboarding])
+    if (setParam === "supervise" || setParam === "contract") setMode("contract")
+    else if (setParam === "self" || setParam === "goal") setMode("goal")
+  }, [setParam])
+
+  useEffect(() => {
+    track("page_create", { onboarding, set: setParam || "self" })
+  }, [onboarding, setParam])
+
+  function switchMode(next: CreateMode) {
+    setMode(next)
+    const params = new URLSearchParams(searchParams.toString())
+    params.set("set", next === "contract" ? "supervise" : "self")
+    router.replace(`/create?${params.toString()}`)
+  }
 
   async function handleParse() {
     if (!draftText.trim()) {
@@ -108,7 +125,7 @@ function CreateContent() {
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-seal">New</p>
         <h1 className="mt-1 font-display text-3xl font-black tracking-tight">创建</h1>
         <p className="mt-2 text-sm text-muted">
-          先写清「要做到什么」和「做到了奖励自己什么」。语音识别可选，填表同样完整。
+          先选角色：对自己立承诺，或与真实用户建立监督约定。
         </p>
       </div>
 
@@ -116,7 +133,7 @@ function CreateContent() {
         <div className="rounded border border-seal/25 bg-seal-soft/50 px-4 py-3 text-sm text-ink">
           <p className="font-semibold">欢迎加入兑一兑</p>
           <p className="mt-1 text-muted">
-            建议先创建一个带奖励的目标。可选邀请 1 位见证人——找一个在乎你说到做到的人。
+            建议先在「我的」里创建一条带奖励的承诺。也可邀请见证人——对方会在监督侧确认。
           </p>
         </div>
       )}
@@ -165,7 +182,7 @@ function CreateContent() {
         {parsedGoals.length > 1 && (
           <div className="space-y-2 border-t border-line pt-3">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted">
-              识别到多个目标 · 点击填入
+              识别到多条承诺 · 点击填入
             </p>
             {parsedGoals.map((g, i) => (
               <button
@@ -187,7 +204,7 @@ function CreateContent() {
         {parsedContracts.length > 1 && (
           <div className="space-y-2 border-t border-line pt-3">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted">
-              识别到多份契约 · 点击填入
+              识别到多份监督约定 · 点击填入
             </p>
             {parsedContracts.map((c, i) => (
               <button
@@ -209,21 +226,23 @@ function CreateContent() {
 
       <div className="flex gap-2 border-b border-line pb-3">
         <button
-          onClick={() => setMode("goal")}
+          type="button"
+          onClick={() => switchMode("goal")}
           className={`relative px-4 py-2 text-sm font-semibold transition ${
             mode === "goal" ? "text-ink" : "text-muted hover:text-ink"
           }`}
         >
-          创建目标
+          我的承诺
           {mode === "goal" && <span className="absolute inset-x-2 -bottom-3 h-0.5 bg-seal" />}
         </button>
         <button
-          onClick={() => setMode("contract")}
+          type="button"
+          onClick={() => switchMode("contract")}
           className={`relative px-4 py-2 text-sm font-semibold transition ${
             mode === "contract" ? "text-ink" : "text-muted hover:text-ink"
           }`}
         >
-          创建契约
+          监督约定
           {mode === "contract" && <span className="absolute inset-x-2 -bottom-3 h-0.5 bg-seal" />}
         </button>
       </div>
@@ -245,6 +264,7 @@ function GoalForm({
   onboarding?: boolean
 }) {
   const router = useRouter()
+  const { user } = useAuth()
   const [title, setTitle] = useState(seed?.title || "")
   const [description, setDescription] = useState(seed?.description || "")
   const [reward, setReward] = useState(seed?.reward || "")
@@ -255,8 +275,10 @@ function GoalForm({
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    fetchUsers().then(setUsers).catch(() => {})
-  }, [])
+    fetchUsers()
+      .then((list) => setUsers(list.filter((u) => u.id !== user?.id)))
+      .catch(() => {})
+  }, [user?.id])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -292,7 +314,7 @@ function GoalForm({
           <p className="rounded border border-seal/30 bg-seal-soft px-3 py-2 text-sm text-seal">{error}</p>
         )}
         <div>
-          <FormLabel required>目标标题</FormLabel>
+          <FormLabel required>承诺标题</FormLabel>
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -352,7 +374,7 @@ function GoalForm({
           disabled={loading}
           className="btn-primary w-full py-2.5 text-sm"
         >
-          {loading ? "创建中..." : onboarding ? "创建我的第一个目标" : "创建目标"}
+          {loading ? "创建中..." : onboarding ? "写下我的第一条承诺" : "创建我的承诺"}
         </button>
       </form>
     </Card>
@@ -361,23 +383,42 @@ function GoalForm({
 
 function ContractForm({ seed }: { seed?: ParsedContract | null }) {
   const router = useRouter()
+  const { user } = useAuth()
   const [title, setTitle] = useState(seed?.title || "")
   const [description, setDescription] = useState(seed?.description || "")
   const [reward, setReward] = useState(seed?.reward || "")
   const [clauseContent, setClauseContent] = useState("")
   const [clauses, setClauses] = useState<string[]>(seed?.clauses || [])
-  const [partyName, setPartyName] = useState("")
-  const [parties, setParties] = useState<{ name: string; role: string }[]>(
-    (seed?.parties || []).map((name) => ({ name, role: "promisee" }))
-  )
+  const [users, setUsers] = useState<AuthUser[]>([])
+  const [partyUserId, setPartyUserId] = useState("")
+  const [parties, setParties] = useState<{ id: string; name: string; role: string }[]>([])
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
 
+  useEffect(() => {
+    fetchUsers().then(setUsers).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    if (!seed?.parties?.length || users.length === 0) return
+    const resolved = seed.parties
+      .map((name) => users.find((u) => u.name === name && u.id !== user?.id))
+      .filter((u): u is AuthUser => Boolean(u))
+      .map((u) => ({ id: u.id, name: u.name, role: "promisee" }))
+    if (resolved.length) setParties(resolved)
+  }, [seed, users, user?.id])
+
   function addParty() {
-    if (partyName.trim()) {
-      setParties([...parties, { name: partyName.trim(), role: "promisee" }])
-      setPartyName("")
+    if (!partyUserId) return
+    const u = users.find((x) => x.id === partyUserId)
+    if (!u) return
+    if (parties.some((p) => p.id === u.id)) {
+      setError("该用户已添加")
+      return
     }
+    setParties([...parties, { id: u.id, name: u.name, role: "promisee" }])
+    setPartyUserId("")
+    setError("")
   }
 
   function addClause() {
@@ -390,7 +431,7 @@ function ContractForm({ seed }: { seed?: ParsedContract | null }) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (parties.length === 0) {
-      setError("请至少添加一个参与方")
+      setError("请至少选择一位真实用户作为对方")
       return
     }
     if (clauses.length === 0) {
@@ -415,19 +456,23 @@ function ContractForm({ seed }: { seed?: ParsedContract | null }) {
     }
   }
 
+  const otherUsers = users.filter(
+    (u) => u.id !== user?.id && !parties.some((p) => p.id === u.id)
+  )
+
   return (
     <Card>
       <form onSubmit={handleSubmit} className="space-y-5">
         {seed && (
           <p className="rounded border border-ok/20 bg-ok-soft px-3 py-2 text-xs text-ok">
-            已根据语音/文字识别填入，可继续修改后提交
+            已根据语音/文字识别填入；对方须为已注册用户，可继续修改后提交
           </p>
         )}
         {error && (
           <p className="rounded border border-seal/30 bg-seal-soft px-3 py-2 text-sm text-seal">{error}</p>
         )}
         <div>
-          <FormLabel required>契约标题</FormLabel>
+          <FormLabel required>监督约定标题</FormLabel>
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -454,25 +499,31 @@ function ContractForm({ seed }: { seed?: ParsedContract | null }) {
           />
         </div>
         <div>
-          <FormLabel required>参与方</FormLabel>
+          <FormLabel required>对方（真实用户）</FormLabel>
           <div className="flex gap-2">
-            <input
-              value={partyName}
-              onChange={(e) => setPartyName(e.target.value)}
-              placeholder="输入对方名称"
+            <select
+              value={partyUserId}
+              onChange={(e) => setPartyUserId(e.target.value)}
               className="input-field flex-1"
-              onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addParty())}
-            />
+            >
+              <option value="">选择已注册用户</option>
+              {otherUsers.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name}
+                </option>
+              ))}
+            </select>
             <button type="button" onClick={addParty} className="rounded border border-line px-4 py-2 text-sm hover:border-ink">
               添加
             </button>
           </div>
+          <p className="mt-1 text-xs text-muted">监督侧必须是多用户；不支持虚构姓名。</p>
           {parties.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-2">
-              {parties.map((p, i) => (
-                <span key={i} className="inline-flex items-center gap-1 rounded bg-paper-deep px-3 py-1 text-sm">
+              {parties.map((p) => (
+                <span key={p.id} className="inline-flex items-center gap-1 rounded bg-paper-deep px-3 py-1 text-sm">
                   {p.name}
-                  <button type="button" onClick={() => setParties(parties.filter((_, j) => j !== i))} className="text-muted hover:text-ink">&times;</button>
+                  <button type="button" onClick={() => setParties(parties.filter((x) => x.id !== p.id))} className="text-muted hover:text-ink">&times;</button>
                 </span>
               ))}
             </div>
@@ -505,7 +556,7 @@ function ContractForm({ seed }: { seed?: ParsedContract | null }) {
           disabled={loading}
           className="btn-primary w-full py-2.5 text-sm"
         >
-          {loading ? "创建中..." : "创建契约"}
+          {loading ? "创建中..." : "创建监督约定"}
         </button>
       </form>
     </Card>

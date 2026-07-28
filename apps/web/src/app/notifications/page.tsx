@@ -4,11 +4,13 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Card } from "@/components/ui/card"
 import { AuthGuard } from "@/components/layout/auth-guard"
+import { useAuth } from "@/lib/auth-context"
 import {
   fetchNotifications,
   markNotificationRead,
   markAllNotificationsRead,
   updateWitness,
+  fetchGoalWitnesses,
 } from "@/lib/api-client"
 import { formatDate } from "@/lib/utils"
 import type { Notification } from "@/lib/types"
@@ -22,8 +24,10 @@ export default function NotificationsPage() {
 }
 
 function NotificationsContent() {
+  const { user } = useAuth()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
+  const [busyId, setBusyId] = useState<string | null>(null)
 
   useEffect(() => {
     load()
@@ -49,30 +53,38 @@ function NotificationsContent() {
   }
 
   async function handleWitnessAction(n: Notification, status: "confirmed" | "declined") {
-    if (!n.relatedId) return
-    const witnesses = await import("@/lib/api-client").then((m) =>
-      m.fetchGoalWitnesses(n.relatedId!)
-    )
-    const mine = witnesses.find((w) => w.status === "pending")
-    if (mine) {
+    if (!n.relatedId || !user) return
+    setBusyId(n.id)
+    try {
+      const witnesses = await fetchGoalWitnesses(n.relatedId)
+      const mine = witnesses.find(
+        (w) => w.status === "pending" && w.witnessUserId === user.id
+      )
+      if (!mine) {
+        await markNotificationRead(n.id)
+        load()
+        return
+      }
       await updateWitness(n.relatedId, mine.id, status)
       await markNotificationRead(n.id)
       load()
+    } finally {
+      setBusyId(null)
     }
   }
 
-  if (loading) return <p className="text-gray-400">加载中...</p>
+  if (loading) return <p className="text-muted">加载中...</p>
 
   const unread = notifications.filter((n) => !n.read).length
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">通知</h1>
+        <h1 className="font-display text-2xl font-bold tracking-tight">通知</h1>
         {unread > 0 && (
           <button
             onClick={handleReadAll}
-            className="text-sm text-blue-600 hover:underline"
+            className="text-sm font-semibold text-seal hover:underline"
           >
             全部标为已读
           </button>
@@ -83,25 +95,27 @@ function NotificationsContent() {
         {notifications.map((n) => (
           <Card
             key={n.id}
-            className={n.read ? "opacity-60" : "border-l-4 border-l-blue-500"}
+            className={n.read ? "opacity-60" : "border-l-4 border-l-seal"}
           >
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1" onClick={() => handleRead(n)}>
                 <p className="font-medium">{n.title}</p>
-                <p className="mt-1 text-sm text-gray-500">{n.message}</p>
-                <p className="mt-2 text-xs text-gray-400">{formatDate(n.createdAt)}</p>
+                <p className="mt-1 text-sm text-muted">{n.message}</p>
+                <p className="mt-2 text-xs text-muted">{formatDate(n.createdAt)}</p>
               </div>
               {n.type === "witness_invite" && n.relatedId && !n.read && (
                 <div className="flex shrink-0 gap-2">
                   <button
                     onClick={() => handleWitnessAction(n, "confirmed")}
-                    className="rounded-lg bg-green-600 px-3 py-1 text-xs text-white hover:bg-green-700"
+                    disabled={busyId === n.id}
+                    className="rounded bg-ok px-3 py-1 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50"
                   >
-                    接受
+                    接受见证
                   </button>
                   <button
                     onClick={() => handleWitnessAction(n, "declined")}
-                    className="rounded-lg border px-3 py-1 text-xs hover:bg-gray-50"
+                    disabled={busyId === n.id}
+                    className="rounded border border-line px-3 py-1 text-xs hover:border-ink disabled:opacity-50"
                   >
                     拒绝
                   </button>
@@ -109,8 +123,14 @@ function NotificationsContent() {
               )}
               {n.relatedId && n.type !== "witness_invite" && (
                 <Link
-                  href={n.type.includes("goal") || n.type.includes("reward") ? "/goals" : "/contracts"}
-                  className="shrink-0 text-xs text-blue-600 hover:underline"
+                  href={
+                    n.type.includes("goal") ||
+                    n.type.includes("reward") ||
+                    n.type.includes("witness")
+                      ? "/goals"
+                      : "/contracts"
+                  }
+                  className="shrink-0 text-xs font-semibold text-seal hover:underline"
                   onClick={() => handleRead(n)}
                 >
                   查看
@@ -120,7 +140,7 @@ function NotificationsContent() {
           </Card>
         ))}
         {notifications.length === 0 && (
-          <p className="text-sm text-gray-400">暂无通知</p>
+          <p className="text-sm text-muted">暂无通知</p>
         )}
       </div>
     </div>

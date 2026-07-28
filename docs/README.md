@@ -59,6 +59,7 @@ contract-spirit/
 | [versions/README.md](versions/README.md) | **初版 / 终极版** — 范围拆分 |
 | [roadmap/fast-launch.md](roadmap/fast-launch.md) | **快速上线计划（当前执行）** — 8～12 周 Web 收反馈 |
 | [roadmap/README.md](roadmap/README.md) | 路线总入口 · 快速轨 / 完整初版轨 |
+| [product-roles.md](product-roles.md) | **角色 IA** — 我的 / 监督双套结构（导航先落地） |
 | [design.md](design.md) | **UI/UX（初版）** |
 | [features.md](features.md) | **功能规格（初版）** |
 | [deployment.md](deployment.md) | **部署** |
@@ -68,12 +69,12 @@ contract-spirit/
 ## 当前能力（摘要）
 
 - Monorepo：`apps/web` + `apps/api`，JWT + bcrypt 认证  
-- 目标 / 奖励兑现 / 见证人；契约与条款；轻量承诺  
+- 顶层角色：**我的**（对自己）/ **监督**（多用户盯他人）；见 [product-roles.md](product-roles.md)  
+- 自我承诺 / 奖励兑现 / 见证人；监督约定与条款  
 - 通知；创建页语音 + AI 意图解析（可选 OpenAI）  
 - 个人资料可补邮箱 / 手机；忘记密码（试验环境返回重置链接）  
 - Java `core-service` 健康检查脚手架  
 
 ## 远程仓库
 
-- Gitee：https://gitee.com/ragon6749/say-and-done  
-- GitHub：https://github.com/Ragon7578/SayAndDone  
+- GitHub：https://github.com/Ragon7578/DuiYiDui  
