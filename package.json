@@ -14,7 +14,9 @@
     "seed": "npm run seed -w @contract-spirit/api",
     "lint": "npm run lint -w @contract-spirit/web",
     "smoke": "bash scripts/smoke.sh",
-    "backup:db": "bash scripts/backup-sqlite.sh",
+    "backup:db": "npm run db:backup -w @contract-spirit/api",
+    "db:verify": "npm run db:verify -w @contract-spirit/api",
+    "db:stats": "npm run db:stats -w @contract-spirit/api",
     "deploy:staging": "bash scripts/deploy-staging.sh"
   }
 }

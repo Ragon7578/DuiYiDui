@@ -32,6 +32,7 @@
 |----|------|----------|
 | **06** | [真邮件重置 SMTP](./06-email-reset.md) | `cursor/email-reset-c614` |
 | **07** | [移动 RN/Expo 脚手架](./07-mobile-explore.md) | `cursor/mobile-adr-c614` |
+| **08** | [**数据库**](./08-database.md) | `cursor/database-c614` |
 
 ---
 
@@ -55,4 +56,4 @@
 | 注册邀请码 | `REGISTRATION_INVITE_CODE` · `GET /api/auth/registration-policy` |
 | 部署 | `docker-compose.yml` · `deploy/Caddyfile` · `npm run deploy:staging` |
 | 冒烟 | `npm run smoke` · `scripts/smoke.sh` |
-| 备份 | `npm run backup:db` |
+| 备份 / 校验 | `npm run backup:db` · `npm run db:verify` · [database.md](../../database.md) |

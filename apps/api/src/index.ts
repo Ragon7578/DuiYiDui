@@ -9,7 +9,9 @@ import notificationsRouter from "./routes/notifications.js"
 import aiRouter from "./routes/ai.js"
 import feedbackRouter from "./routes/feedback.js"
 import eventsRouter from "./routes/events.js"
+import dbRouter from "./routes/db.js"
 import { getDb } from "./db/schema.js"
+import { checkDbHealth } from "./db/maintenance.js"
 
 const app = express()
 const PORT = Number(process.env.PORT) || 4000
@@ -26,10 +28,19 @@ if (process.env.NODE_ENV === "production" && !process.env.JWT_SECRET) {
 }
 
 app.get("/api/health", (_req, res) => {
-  res.json({
-    status: "ok",
+  const dbHealth = checkDbHealth()
+  const ok = dbHealth.ok
+  res.status(ok ? 200 : 503).json({
+    status: ok ? "ok" : "degraded",
     timestamp: new Date().toISOString(),
     version: "initial-fast-launch",
+    db: {
+      ok: dbHealth.ok,
+      integrity: dbHealth.integrity,
+      schemaVersion: dbHealth.schemaVersion,
+      expectedSchemaVersion: dbHealth.expectedSchemaVersion,
+      journalMode: dbHealth.journalMode,
+    },
   })
 })
 
@@ -42,6 +53,7 @@ app.use("/api/notifications", notificationsRouter)
 app.use("/api/ai", aiRouter)
 app.use("/api/feedback", feedbackRouter)
 app.use("/api/events", eventsRouter)
+app.use("/api/db", dbRouter)
 
 app.use((_req, res) => {
   res.status(404).json({ error: "Not found" })

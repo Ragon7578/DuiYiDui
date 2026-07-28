@@ -56,9 +56,11 @@ contract-spirit/
 | [api.md](api.md) | **REST API** — 端点、鉴权、错误码 |
 | [backend.md](backend.md) | **后端说明** — Express 模块、安全、Java 规划 |
 | [data-model.md](data-model.md) | **数据模型** — 表结构、信任分规则 |
+| [database.md](database.md) | **数据库运维** — 备份、迁移、健康检查 |
 | [versions/README.md](versions/README.md) | **初版 / 终极版** — 范围拆分 |
 | [roadmap/fast-launch.md](roadmap/fast-launch.md) | **快速上线计划（当前执行）** — 8～12 周 Web 收反馈 |
 | [roadmap/README.md](roadmap/README.md) | 路线总入口 · 快速轨 / 完整初版轨 |
+| [roadmap/agents/README.md](roadmap/agents/README.md) | **Cloud Agent 任务拆分**（多 Agent 交接） |
 | [design.md](design.md) | **UI/UX（初版）** |
 | [features.md](features.md) | **功能规格（初版）** |
 | [deployment.md](deployment.md) | **部署** |

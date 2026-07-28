@@ -1,36 +1,39 @@
 #!/usr/bin/env bash
-# 备份 Docker 卷中的 SQLite（或本地 DB_PATH）
-# 用法:
-#   bash scripts/backup-sqlite.sh
-#   DB_PATH=./apps/api/data/contract-spirit.db bash scripts/backup-sqlite.sh
+# 在线备份 SQLite（优先 SQLite backup API，WAL 安全）
+# 用法: bash scripts/backup-sqlite.sh [输出路径]
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-OUT_DIR="${BACKUP_DIR:-$ROOT/backups}"
-STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
-mkdir -p "$OUT_DIR"
+cd "$ROOT"
+
+if [[ -n "${1:-}" ]]; then
+  npm run db:backup -w @contract-spirit/api -- "$1"
+  exit 0
+fi
 
 if [[ -n "${DB_PATH:-}" && -f "$DB_PATH" ]]; then
-  DEST="${OUT_DIR}/contract-spirit-${STAMP}.db"
-  cp -a "$DB_PATH" "$DEST"
-  echo "[backup] copied ${DB_PATH} → ${DEST}"
+  export DB_PATH
+  npm run db:backup -w @contract-spirit/api
   exit 0
 fi
 
 if docker compose -f "$ROOT/docker-compose.yml" ps --status running 2>/dev/null | grep -q api; then
-  DEST="${OUT_DIR}/contract-spirit-${STAMP}.db"
+  STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+  DEST="${BACKUP_DIR:-$ROOT/backups}/contract-spirit-${STAMP}.db"
+  mkdir -p "$(dirname "$DEST")"
   docker compose -f "$ROOT/docker-compose.yml" exec -T api \
-    node -e "require('fs').copyFileSync(process.env.DB_PATH||'/data/contract-spirit.db','/tmp/backup.db')"
-  docker compose -f "$ROOT/docker-compose.yml" cp api:/tmp/backup.db "$DEST"
-  echo "[backup] docker volume → ${DEST}"
+    node --import tsx apps/api/src/db/maintenance-cli.ts backup "/tmp/backup-${STAMP}.db" 2>/dev/null ||
+    docker compose -f "$ROOT/docker-compose.yml" exec -T api \
+      node apps/api/dist/db/maintenance-cli.js backup "/tmp/backup-${STAMP}.db"
+  docker compose -f "$ROOT/docker-compose.yml" cp "api:/tmp/backup-${STAMP}.db" "$DEST"
+  echo "[backup] docker → ${DEST}"
   exit 0
 fi
 
 LOCAL_DB="$ROOT/apps/api/data/contract-spirit.db"
 if [[ -f "$LOCAL_DB" ]]; then
-  DEST="${OUT_DIR}/contract-spirit-${STAMP}.db"
-  cp -a "$LOCAL_DB" "$DEST"
-  echo "[backup] copied ${LOCAL_DB} → ${DEST}"
+  export DB_PATH="$LOCAL_DB"
+  npm run db:backup -w @contract-spirit/api
   exit 0
 fi
 

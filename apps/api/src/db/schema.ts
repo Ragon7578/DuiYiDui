@@ -1,6 +1,7 @@
 import { DatabaseSync } from "node:sqlite"
 import path from "node:path"
 import fs from "node:fs"
+import { ensureMetaTable, getSchemaVersion, setSchemaVersion, SCHEMA_VERSION } from "./meta.js"
 
 const DB_PATH = process.env.DB_PATH
   ? path.resolve(process.env.DB_PATH)
@@ -18,6 +19,8 @@ export function getDb(): DatabaseSync {
     console.log(`[db] using ${DB_PATH}`)
     db.exec("PRAGMA journal_mode=WAL")
     db.exec("PRAGMA foreign_keys=ON")
+    db.exec("PRAGMA busy_timeout=5000")
+    db.exec("PRAGMA synchronous=NORMAL")
     initSchema()
   }
   return db
@@ -141,9 +144,27 @@ function initSchema() {
   `)
 
   migrateSchema()
+  applyIndexesAndVersion()
+}
+
+function applyIndexesAndVersion() {
+  const version = getSchemaVersion(db)
+  if (version >= SCHEMA_VERSION) return
+
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_goals_user_id ON goals(user_id);
+    CREATE INDEX IF NOT EXISTS idx_goals_user_status ON goals(user_id, status);
+    CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON notifications(user_id, read);
+    CREATE INDEX IF NOT EXISTS idx_goal_witnesses_goal ON goal_witnesses(goal_id);
+    CREATE INDEX IF NOT EXISTS idx_feedback_created ON feedback(created_at);
+    CREATE INDEX IF NOT EXISTS idx_analytics_events_event ON analytics_events(event, created_at);
+  `)
+
+  setSchemaVersion(db, SCHEMA_VERSION)
 }
 
 function migrateSchema() {
+  ensureMetaTable(db)
   const userCols = db.prepare("PRAGMA table_info(users)").all() as { name: string }[]
   const names = new Set(userCols.map((c) => c.name))
 

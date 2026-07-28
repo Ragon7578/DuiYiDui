@@ -80,6 +80,28 @@ User
 | `read` | 0/1 |
 | `created_at` | |
 
+### feedback
+
+| 列 | 说明 |
+|----|------|
+| `id` / `user_id` | 可匿名（`user_id` 可空） |
+| `contact` / `message` | |
+| `created_at` | |
+
+### analytics_events
+
+| 列 | 说明 |
+|----|------|
+| `id` / `user_id` | 埋点事件 |
+| `event` / `payload` | JSON 字符串 |
+| `created_at` | |
+
+### schema_meta
+
+| 列 | 说明 |
+|----|------|
+| `key` / `value` | 如 `schema_version` → 当前逻辑版本号 |
+
 ## 四、信任分 / 成就点规则（与实现一致）
 
 ```

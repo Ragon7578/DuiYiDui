@@ -7,6 +7,8 @@ const passwordHash = bcrypt.hashSync("password123", 12)
 
 db.exec("DELETE FROM goal_witnesses")
 db.exec("DELETE FROM notifications")
+db.exec("DELETE FROM feedback")
+db.exec("DELETE FROM analytics_events")
 db.exec("DELETE FROM clauses")
 db.exec("DELETE FROM parties")
 db.exec("DELETE FROM contracts")
