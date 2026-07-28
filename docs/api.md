@@ -8,8 +8,9 @@ Content-Type：`application/json`
 
 | 类型 | 说明 |
 |------|------|
-| 公开 | `GET /api/health`；`POST /api/auth/register`、`login`、`forgot-password`、`reset-password` |
+| 公开 | `GET /api/health`；`POST /api/auth/register`、`login`、`forgot-password`、`reset-password`；`POST /api/feedback`；`POST /api/events` |
 | 需登录 | 其余业务接口 |
+| 值班密钥 | `GET /api/feedback`（`X-Feedback-Admin-Key`） |
 
 请求头：
 
@@ -61,12 +62,14 @@ Body：`{ "username", "password" }`（亦兼容 `name`）
 ### `POST /api/auth/forgot-password`
 
 Body：`{ "email" }`  
-**200** → `{ "message": "...", "resetUrl?": "http://localhost:3000/reset-password?token=..." }`  
-说明：试验环境可带 `resetUrl`；未绑定邮箱时仍返回通用文案（不暴露是否存在）。
+限流：约 5 次/分钟。  
+**200** → `{ "message": "...", "resetUrl?": "..." }`  
+说明：仅当 `EXPOSE_RESET_URL=true`（或非 production 且未显式关闭）时带 `resetUrl`；生产默认关闭。未绑定邮箱时仍返回通用文案（不暴露是否存在）。服务端始终记日志。
 
 ### `POST /api/auth/reset-password`
 
 Body：`{ "token", "password", "confirmPassword?" }`  
+限流：约 10 次/分钟。  
 **200** → `{ "message": "..." }`
 
 ### `GET /api/auth/me`
@@ -173,6 +176,32 @@ Body：`{ "token", "password", "confirmPassword?" }`
 
 需鉴权。Body：`{ "text": "自然语言描述", "mode?": "goal"|"contract" }`  
 返回结构化字段供创建页填表。无 `OPENAI_API_KEY` 时走本地规则解析。
+
+---
+
+## 反馈 `/api/feedback`
+
+### `POST /api/feedback`
+
+可匿名（有 token 则记 `user_id`）。Body：`{ "message", "contact?" }`（`message` 5–2000 字）。  
+限流：约 8 次/分钟。  
+**201** → `{ "id", "message" }`
+
+### `GET /api/feedback`
+
+值班读取。Header：`X-Feedback-Admin-Key: <FEEDBACK_ADMIN_KEY>`（或 `?key=`）。  
+Query：`limit`（默认 50，最大 200）。  
+**200** → `{ "items": [{ "id", "userId", "contact", "message", "createdAt" }], "count" }`  
+未配置密钥 → **503**。
+
+---
+
+## 事件埋点 `/api/events`
+
+### `POST /api/events`
+
+Body：`{ "name": "register"|"create_goal"|… , "props?" }`  
+用于注册、建目标、兑奖、提交反馈等计数；具体事件名见前端 `apps/web/src/lib/analytics.ts`。
 
 ---
 

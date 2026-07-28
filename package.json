@@ -12,6 +12,8 @@
     "stop": "bash scripts/stop.sh",
     "build": "npm run build -w @contract-spirit/api && npm run build -w @contract-spirit/web",
     "seed": "npm run seed -w @contract-spirit/api",
-    "lint": "npm run lint -w @contract-spirit/web"
+    "lint": "npm run lint -w @contract-spirit/web",
+    "smoke": "bash scripts/smoke.sh",
+    "backup:db": "bash scripts/backup-sqlite.sh"
   }
 }

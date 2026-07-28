@@ -1,0 +1,23 @@
+# 兑一兑 · 公网 HTTPS 反代示例（Caddy）
+#
+# 假设:
+#   - API 容器监听主机 4000
+#   - Web 容器监听主机 3000
+#   - 域名已解析到本机
+#
+# 用法: caddy run --config deploy/Caddyfile
+#
+# 对应 .env（示例）:
+#   APP_URL=https://app.example.com
+#   FRONTEND_ORIGIN=https://app.example.com
+#   NEXT_PUBLIC_API_URL=https://api.example.com
+
+app.example.com {
+	encode gzip
+	reverse_proxy 127.0.0.1:3000
+}
+
+api.example.com {
+	encode gzip
+	reverse_proxy 127.0.0.1:4000
+}

@@ -12,9 +12,18 @@ services:
       APP_URL: ${APP_URL:-http://localhost:3000}
       FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:3000}
       DB_PATH: /data/contract-spirit.db
+      EXPOSE_RESET_URL: ${EXPOSE_RESET_URL:-false}
+      SUPPORT_EMAIL: ${SUPPORT_EMAIL:-}
+      FEEDBACK_ADMIN_KEY: ${FEEDBACK_ADMIN_KEY:-}
     volumes:
       - cs_data:/data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   web:
     build:
@@ -27,8 +36,15 @@ services:
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000}
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
 
 volumes:
   cs_data:
