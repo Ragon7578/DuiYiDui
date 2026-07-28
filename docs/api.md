@@ -8,7 +8,7 @@ Content-Type：`application/json`
 
 | 类型 | 说明 |
 |------|------|
-| 公开 | `GET /api/health`；`POST /api/auth/register`、`login`、`forgot-password`、`reset-password`；`POST /api/feedback`；`POST /api/events` |
+| 公开 | `GET /api/health`；`GET /api/auth/registration-policy`；`POST /api/auth/register`、`login`、`forgot-password`、`reset-password`；`POST /api/feedback`；`POST /api/events` |
 | 需登录 | 其余业务接口 |
 | 值班密钥 | `GET /api/feedback`（`X-Feedback-Admin-Key`） |
 
@@ -50,9 +50,13 @@ Authorization: Bearer <jwt>
 
 ### `POST /api/auth/register`
 
-Body：`{ "username", "password", "confirmPassword?" }`  
-规则：用户名 2–20（中文/字母/数字/下划线）；密码 ≥ 6。  
+Body：`{ "username", "password", "confirmPassword?", "inviteCode?" }`  
+规则：用户名 2–20；密码 ≥ 6。若服务端配置 `REGISTRATION_INVITE_CODE`，须传正确 `inviteCode`。  
 **201** → `{ token, user }`
+
+### `GET /api/auth/registration-policy`
+
+**200** → `{ "inviteCodeRequired": boolean }`（是否必须邀请码）
 
 ### `POST /api/auth/login`
 

@@ -48,9 +48,18 @@ DB_PATH=... npm run seed -w @contract-spirit/api
 冒烟（API 已启动时）：
 
 ```bash
-API_URL=http://localhost:4000 FEEDBACK_ADMIN_KEY=你的密钥 npm run smoke
-# 或: bash scripts/smoke.sh
+API_URL=http://localhost:4000 npm run smoke
+# 若开启邀请码: REGISTRATION_INVITE_CODE=你的码 npm run smoke
 ```
+
+一键 Staging（本机 Compose + 健康检查 + 冒烟）：
+
+```bash
+cp .env.example .env && 编辑 JWT_SECRET 等
+npm run deploy:staging
+```
+
+完整 §0.1 验收见 [roadmap/f3-launch-checklist.md](./roadmap/f3-launch-checklist.md)。
 
 ## 三、环境变量
 
@@ -66,6 +75,7 @@ API_URL=http://localhost:4000 FEEDBACK_ADMIN_KEY=你的密钥 npm run smoke
 | `EXPOSE_RESET_URL` | 生产建议 `false`；本地开发默认可开 |
 | `SUPPORT_EMAIL` | 人工重置文案中的值班邮箱 |
 | `FEEDBACK_ADMIN_KEY` | 拉取反馈列表的密钥 |
+| `REGISTRATION_INVITE_CODE` | 可选；设置后注册须填相同邀请码（邀请制） |
 | `OPENAI_API_KEY` | 可选 |
 
 ### Web

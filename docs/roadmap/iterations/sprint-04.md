@@ -2,7 +2,7 @@
 
 | 项 | 内容 |
 |----|------|
-| **日期** | 2026-08-31 → 2026-09-13 |
+| **日期** | 2026-08-31 → 2026-09-13（可平移） |
 | **阶段** | [fast-launch F3](../fast-launch.md) |
 | **目标** | 对照 §0.1 全勾；邀请真实用户；开始收使用反馈 |
 
@@ -10,17 +10,17 @@
 
 ## Must
 
-- [ ] [fast-launch §0.1](../fast-launch.md) 上线标准逐条勾选通过  
+- [ ] [fast-launch §0.1](../fast-launch.md) + [f3-launch-checklist.md](../f3-launch-checklist.md) 公网验收逐条勾选  
 - [ ] 生产或准生产域名开放（邀请制 / 限流）  
-- [ ] 忘记密码自助可用（若仍临时方案，须有人工 SLA）  
+- [x] 忘记密码自助或人工 SLA → 临时方案 + [feedback-duty.md](../decisions/feedback-duty.md)  
 - [ ] 邀请首批 **≥20** 名目标用户并告知反馈入口  
-- [ ] 值班表：谁看反馈、多久处理一次  
-- [ ] 周报模板启用「本周用户反馈」栏（见 progress）  
+- [x] 值班表：谁看反馈、多久处理一次 → [feedback-duty.md](../decisions/feedback-duty.md)  
+- [x] 周报模板启用「本周用户反馈」栏（见 progress）  
 
 ## Should
 
 - [ ] 简单状态页 / 公告（可选）  
-- [ ] 注册邀请码（防刷）  
+- [x] 注册邀请码（防刷）→ `REGISTRATION_INVITE_CODE` + 注册页  
 
 ## 不做
 
@@ -39,3 +39,9 @@
 ## 里程碑
 
 **M-反馈达成** → 后续可规划移动，但不回退「无 Web 反馈还做大功能」。
+
+## 仓库侧一键自检
+
+```bash
+npm run deploy:staging
+```

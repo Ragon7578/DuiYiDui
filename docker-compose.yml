@@ -15,6 +15,7 @@ services:
       EXPOSE_RESET_URL: ${EXPOSE_RESET_URL:-false}
       SUPPORT_EMAIL: ${SUPPORT_EMAIL:-}
       FEEDBACK_ADMIN_KEY: ${FEEDBACK_ADMIN_KEY:-}
+      REGISTRATION_INVITE_CODE: ${REGISTRATION_INVITE_CODE:-}
     volumes:
       - cs_data:/data
     restart: unless-stopped

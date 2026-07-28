@@ -9,7 +9,7 @@ interface AuthContextValue {
   user: UserProfile | null
   loading: boolean
   login: (username: string, password: string) => Promise<void>
-  register: (username: string, password: string, confirmPassword?: string) => Promise<void>
+  register: (username: string, password: string, confirmPassword?: string, inviteCode?: string) => Promise<void>
   logout: () => void
   refresh: () => Promise<void>
 }
@@ -49,9 +49,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function register(
     username: string,
     password: string,
-    confirmPassword?: string
+    confirmPassword?: string,
+    inviteCode?: string
   ) {
-    const res = await apiRegister(username, password, confirmPassword)
+    const res = await apiRegister(username, password, confirmPassword, inviteCode)
     setToken(res.token)
     setUser(res.user)
     track("register")

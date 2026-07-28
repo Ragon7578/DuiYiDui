@@ -115,9 +115,9 @@ F3              ████  ★ Web 反馈上线
 
 ### F3 · 1～2 周 · ★ 反馈上线
 
-- [ ] 邀请制或限流开放（防刷）  
-- [ ] 对照 §0.1 清单全勾  
-- [ ] 简单值班：谁看反馈、多久回一次  
+- [x] 邀请制或限流开放（防刷）→ 注册限流 + 可选 `REGISTRATION_INVITE_CODE`；见 [f3-launch-checklist.md](./f3-launch-checklist.md)  
+- [ ] 对照 §0.1 清单全勾（公网验收）  
+- [x] 简单值班：谁看反馈、多久回一次 → [decisions/feedback-duty.md](./decisions/feedback-duty.md)  
 - [ ] 宣布：**初版 Web 已上线，开始收使用反馈**  
 
 ### F4+ · 反馈后

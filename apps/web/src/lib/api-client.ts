@@ -22,15 +22,20 @@ export function login(username: string, password: string) {
   })
 }
 
-export function register(username: string, password: string, confirmPassword?: string) {
+export function register(username: string, password: string, confirmPassword?: string, inviteCode?: string) {
   return apiFetch<LoginResponse>("/api/auth/register", {
     method: "POST",
     body: JSON.stringify({
       username,
       password,
       confirmPassword: confirmPassword ?? password,
+      inviteCode: inviteCode || undefined,
     }),
   })
+}
+
+export function fetchRegistrationPolicy() {
+  return apiFetch<{ inviteCodeRequired: boolean }>("/api/auth/registration-policy")
 }
 
 export function fetchMe() {
