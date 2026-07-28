@@ -1,0 +1,15 @@
+---
+description: 本仓库 Agent 仅关注 GitHub Ragon7578/DuiYiDui
+alwaysApply: true
+---
+
+# 项目范围
+
+本 Agent **只**处理 **Ragon7578/DuiYiDui（兑一兑）**。
+
+- 工作区根：`/Users/ragon/RagonProjects/DuiYiDui`
+- 远程：`https://github.com/Ragon7578/DuiYiDui.git`（仅 GitHub `origin`）
+- 不要读写或切换到 `RagonProjects` 下其他仓库（如 AiAgentStudy、SmartCity）
+- 不要使用旧路径 `/Users/ragon/project/contract-spirit` 或 Gitee 远端
+- 包名可能仍为 `contract-spirit` / `@contract-spirit/*`，以本仓库为准，勿与其他项目混淆
+- 产品文案区分 **我的（Self）** / **监督（Supervise）**；品牌名「兑一兑」
