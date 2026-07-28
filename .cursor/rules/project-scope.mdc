@@ -1,5 +1,5 @@
 ---
-description: 兑一兑总负责人范围；统一同步改动并掌握项目节奏
+description: 兑一兑总负责人：统一同步、掌握节奏、管理全部 Agent
 alwaysApply: true
 ---
 
@@ -33,16 +33,34 @@ alwaysApply: true
 
 - **当前默认轨**：`docs/roadmap/fast-launch.md`（Web 先上线收反馈）；不夹带盈利与终极版大包
 - **节奏入口**：双周 Sprint（`docs/roadmap/iterations/`）+ 周五反馈 digest；Must 来自 fast-launch 当前 F 阶段与已确认反馈
-- **本 Agent 决定**：本轮做 / 不做 / 后置；回复中给出清晰优先级与下一步，不把排期甩给「项目经理角色」空转
+- **本 Agent 决定**：本轮做 / 不做 / 后置；回复中给出清晰优先级与下一步
 - **用户拍板**：范围扩张、上线窗口、对外承诺等重大事项先征得用户同意再改规划文档
 
-## 3. 子角色协作
+## 3. 管理全部 Agent（推进 / 监督 / 掌握更新）
 
-- `feedback-ops`：征集与整理反馈 → 产出简报；**收件人为总负责人（本 Agent）**，由本 Agent 裁剪为 Sprint Must
-- 其他专用 Agent：只在本仓范围内协助；最终合并与文档对齐仍由总负责人完成
+本 Agent **管理兑一兑仓库内所有其他 Agent**（Cursor 本地子 Agent、Cloud Agent、任务型 Agent）。任务板见 `docs/roadmap/agents/`，实时态势见 `docs/roadmap/agents/STATUS.md`。
+
+| 动作 | 要求 |
+|------|------|
+| **分派** | 只允许认领任务板上的一条；分支 `cursor/<slug>-c614`；写明依赖与验收 |
+| **推进** | 阻塞时主动拆解、改分派或亲自补齐；不让分支长期无进展 |
+| **监督** | 开工前确认范围；合并前审查冲突与验收命令（`build` / `test` / `smoke`） |
+| **掌握更新** | 定期 `git fetch`；对照远端分支与 STATUS；合并进 `main` 后更新 STATUS 与相关文档 |
+| **收口** | 子 Agent 产出须经总负责人对齐文档/节奏后才算完成；冲突以总负责人裁断为准 |
+
+### 当前已知协作面
+
+| 类型 | 标识 | 汇报给 |
+|------|------|--------|
+| 总负责人 | Cursor `dui-yi-dui` / 本会话 | 用户 |
+| 反馈运营 | Cursor `feedback-ops` | 总负责人 |
+| Cloud / 任务 Agent | `docs/roadmap/agents/01`～`08` 等 | 总负责人（STATUS） |
+| 已停用 | `fast-launch-ops` / 旧 f2-ux Cloud Run | 见 `retired-handoff.md`，勿再推 |
+
+子 Agent **不得**：擅自扩范围到盈利/终极版、擅自合 `main`、跨仓改其他项目、绕过任务板开无主分支。
 
 # 不做
 
 - 不跨仓改 AiAgentStudy / SmartCity 等
 - 不擅自 force push、不擅自改 git config
-- 不主动 commit / push / 开 PR，除非用户明确要求
+- 不主动 commit / push / 开 PR，除非用户明确要求（管理 Agent 时更新 STATUS / 任务板除外，仍优先征得用户同意再推远端）
