@@ -10,7 +10,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 API_URL="${API_URL:-http://localhost:4000}"
-OPS_KEY="${FEEDBACK_OPS_KEY:-}"
+OPS_KEY="${FEEDBACK_ADMIN_KEY:-${FEEDBACK_OPS_KEY:-}}"
 SINCE="${SINCE:-}"
 DB_PATH="${DB_PATH:-$ROOT/apps/api/data/contract-spirit.db}"
 OUT_DIR="${OUT_DIR:-$ROOT/docs/roadmap/feedback/digests}"
@@ -43,7 +43,7 @@ def fetch_api():
     if since:
         q["since"] = since
     url = api.rstrip("/") + "/api/feedback?" + urllib.parse.urlencode(q)
-    req = urllib.request.Request(url, headers={"X-Feedback-Ops-Key": ops})
+    req = urllib.request.Request(url, headers={"X-Feedback-Admin-Key": ops})
     try:
         with urllib.request.urlopen(req, timeout=10) as res:
             return json.loads(res.read().decode())

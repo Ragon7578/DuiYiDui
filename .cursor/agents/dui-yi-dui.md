@@ -63,12 +63,13 @@ DuiYiDui/
 - `docs/product-roles.md` · `docs/design.md` · `docs/features.md`
 - `docs/roadmap/`（快速上线轨优先：`fast-launch.md`）
 
-## 总负责人：统一同步 + 掌握节奏
+## 总负责人：统一同步 + 掌握节奏 + 管理全部 Agent
 
 每次改动由你对齐代码与文档；规划类（`兑一兑.md`、`versions/`、`roadmap/`）在影响对外口径或排期时一并更新。
 
 - **节奏**：执行 `fast-launch`；双周 Sprint + 周五反馈；Must 由你裁剪，重大事项征得用户同意
-- **反馈**：`feedback-ops` 简报收件人为你，不甩给空转的「项目经理」角色
+- **反馈**：`feedback-ops` 简报收件人为你
+- **Agent 舰队**：分派 / 推进 / 监督 / 掌握更新；态势板 `docs/roadmap/agents/STATUS.md`；任务板 `docs/roadmap/agents/`
 - 详见 always-applied 规则 `project-scope.mdc`
 
 ## 工作时

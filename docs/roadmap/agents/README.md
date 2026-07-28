@@ -1,8 +1,10 @@
 # 兑一兑 · Cloud Agent 任务拆分
 
+> **总负责人：** Cursor `dui-yi-dui`（分派、推进、监督、掌握更新）  
+> **态势快照：** [STATUS.md](./STATUS.md)（先读）  
 > **本目录：** 把快速轨剩余工作拆成**可并行、可交接**的 Agent 任务。  
 > **原 Cloud Agent（项目进展 / fast-launch-ops / f2-ux）已停用** — 见 [retired-handoff.md](./retired-handoff.md)。  
-> **新 Agent 请只认领一条任务**，分支名 `cursor/<任务 slug>-c614`，base `main`（或任务里写明的依赖 PR）。
+> **新 Agent 请只认领一条任务**（须经总负责人确认），分支名 `cursor/<任务 slug>-c614`，base `main`（或任务里写明的依赖 PR）。
 
 ---
 
@@ -10,9 +12,10 @@
 
 | 顺序 | 文档 |
 |------|------|
-| 1 | [retired-handoff.md](./retired-handoff.md) — 已完成什么、开着的 PR |
-| 2 | [fast-launch.md](../fast-launch.md) — 当前轨道 F0～F3 |
-| 3 | [f3-launch-checklist.md](../f3-launch-checklist.md) — 上线验收表 |
+| 1 | [STATUS.md](./STATUS.md) — 总负责人维护的实时态势 |
+| 2 | [retired-handoff.md](./retired-handoff.md) — 已完成什么、开着的 PR |
+| 3 | [fast-launch.md](../fast-launch.md) — 当前轨道 F0～F3 |
+| 4 | [f3-launch-checklist.md](../f3-launch-checklist.md) — 上线验收表（合入 main 后） |
 
 ---
 
@@ -20,11 +23,11 @@
 
 | ID | 任务 | 分支建议 | 依赖 | 谁做 |
 |----|------|----------|------|------|
-| **01** | [合并 PR #3 并验收](./01-merge-pr3.md) | —（合并，不新开功能分支） | 无 | **最先** |
+| **01** | [合并 PR #3 并验收](./01-merge-pr3.md) | —（合并，不新开功能分支） | 无 | **总负责人优先推进** |
 | **02** | [本机 / Staging Compose 部署](./02-staging-compose.md) | `cursor/staging-compose-c614` | 01 | 需云主机或本机 |
-| **03** | [公网 HTTPS + 域名](./03-public-https.md) | `cursor/public-https-c614` | 02 | **需你方账号** |
+| **03** | [公网 HTTPS + 域名](./03-public-https.md) | `cursor/public-https-c614` | 02 | **需用户账号** |
 | **04** | [F3 开放：邀人 + 宣布收反馈](./04-f3-launch-ops.md) | `cursor/f3-launch-ops-c614` | 03 | 产品 + Agent 文档 |
-| **05** | [反馈迭代 Sprint 05+](./05-feedback-iteration.md) | `cursor/feedback-iter-c614` | 04 | 持续 |
+| **05** | [反馈迭代 Sprint 05+](./05-feedback-iteration.md) | `cursor/feedback-iter-c614` | 04 | `feedback-ops` + 总负责人裁剪 |
 
 **后置（不挡反馈）：**
 
@@ -38,11 +41,13 @@
 
 ## 给新 Agent 的固定约定
 
-1. 分支：`cursor/<slug>-c614`，小写。  
-2. 只改任务范围内文件；盈利 / 终极版功能打回 [终极版](../../versions/终极版.md)。  
-3. 验收命令：`npm run build`、`npm run smoke`（API 已起时）。  
-4. 周报写入 `docs/roadmap/progress/YYYY-Www.md`。  
-5. 合并 PR 用仓库 `ManagePullRequest` / GitHub，**不要**假设「项目进展」那个 Cloud Run 还在。
+1. **向总负责人报到：** 开工前更新/确认 [STATUS.md](./STATUS.md) 认领行；完成后回写状态。  
+2. 分支：`cursor/<slug>-c614`，小写。  
+3. 只改任务范围内文件；盈利 / 终极版功能打回 [终极版](../../versions/终极版.md)。  
+4. 验收命令：`npm run build`、`npm run test`（若有）、`npm run smoke`（API 已起时）。  
+5. 周报写入 `docs/roadmap/progress/YYYY-Www.md`。  
+6. **合并 `main`：** 由总负责人裁定或亲自合并；子 Agent 不得擅自合入。  
+7. 不要假设已停用的「项目进展」Cloud Run 仍在。
 
 ---
 
