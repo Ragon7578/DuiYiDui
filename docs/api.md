@@ -48,8 +48,8 @@ Authorization: Bearer <jwt>
   "db": {
     "ok": true,
     "integrity": "ok",
-    "schemaVersion": 2,
-    "expectedSchemaVersion": 2,
+    "schemaVersion": 3,
+    "expectedSchemaVersion": 3,
     "journalMode": "wal"
   }
 }

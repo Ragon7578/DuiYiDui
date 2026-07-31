@@ -73,6 +73,8 @@ export function getDbStats(): DbStats {
     "goal_witnesses",
     "feedback",
     "analytics_events",
+    "trust_ledger",
+    "schema_meta",
   ]
   const counts: Record<string, number> = {}
   for (const name of tables) {

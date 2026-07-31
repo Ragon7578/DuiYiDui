@@ -66,7 +66,8 @@ router.get(
     const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 200)
     const rows = getDb()
       .prepare(
-        `SELECT id, user_id AS userId, contact, message, created_at AS createdAt
+        `SELECT id, user_id AS userId, contact, message, status,
+                created_at AS createdAt, reviewed_at AS reviewedAt
          FROM feedback
          ORDER BY created_at DESC
          LIMIT ?`

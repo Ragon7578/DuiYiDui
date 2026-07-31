@@ -1,5 +1,6 @@
 import { Router } from "express"
 import { getDb } from "../db/schema.js"
+import { adjustTrustScore } from "../db/trust.js"
 import { v4 as uuid } from "uuid"
 import { requireAuth } from "../middleware/auth.js"
 import { param } from "../utils/params.js"
@@ -38,15 +39,17 @@ router.post("/", requireAuth, (req, res) => {
     INSERT INTO goals (id, title, description, reward, deadline, status, progress, user_id)
     VALUES (?, ?, ?, ?, ?, 'active', 0, ?)
   `).run(id, input.title, input.description || null, input.reward, input.deadline || null, userId)
-  db.prepare("UPDATE users SET total_goals = total_goals + 1 WHERE id = ?").run(userId)
+  db.prepare(
+    "UPDATE users SET total_goals = total_goals + 1, updated_at = datetime('now') WHERE id = ?"
+  ).run(userId)
 
   if (input.witnessUserId) {
     const witness = db.prepare("SELECT name FROM users WHERE id = ?").get(input.witnessUserId) as { name: string } | undefined
     if (witness) {
-      addWitness(id, input.witnessUserId, witness.name, userId)
+      addWitness(id, input.witnessUserId, witness.name)
     }
   } else if (input.witnessName && String(input.witnessName).trim()) {
-    addWitness(id, null, String(input.witnessName).trim(), userId)
+    addWitness(id, null, String(input.witnessName).trim())
   }
 
   const row = db.prepare("SELECT * FROM goals WHERE id = ?").get(id) as any
@@ -61,7 +64,7 @@ router.patch("/:id", requireAuth, (req, res) => {
   if (!existing) { res.status(404).json({ error: "Goal not found" }); return }
 
   const input = req.body as UpdateGoalInput
-  const sets: string[] = []
+  const sets: string[] = ["updated_at = datetime('now')"]
   const params: any[] = []
 
   if (input.title !== undefined) { sets.push("title = ?"); params.push(input.title) }
@@ -70,7 +73,10 @@ router.patch("/:id", requireAuth, (req, res) => {
   if (input.deadline !== undefined) { sets.push("deadline = ?"); params.push(input.deadline) }
   if (input.status !== undefined) { sets.push("status = ?"); params.push(input.status) }
   if (input.progress !== undefined) { sets.push("progress = ?"); params.push(input.progress) }
-  if (input.rewardClaimed !== undefined) { sets.push("reward_claimed = ?"); params.push(input.rewardClaimed ? 1 : 0) }
+  if (input.rewardClaimed !== undefined) {
+    sets.push("reward_claimed = ?")
+    params.push(input.rewardClaimed ? 1 : 0)
+  }
 
   if (input.status === "achieved" && existing.status !== "achieved") {
     sets.push("achieved_at = datetime('now')")
@@ -81,7 +87,9 @@ router.patch("/:id", requireAuth, (req, res) => {
     sets.push("achieved_at = datetime('now')")
   }
 
-  if (sets.length === 0) { res.json(rowToGoal(existing)); return }
+  if (input.status === "abandoned" && existing.status !== "abandoned") {
+    sets.push("abandoned_at = datetime('now')")
+  }
 
   params.push(param(req.params.id))
   db.prepare(`UPDATE goals SET ${sets.join(", ")} WHERE id = ?`).run(...params)
@@ -91,19 +99,25 @@ router.patch("/:id", requireAuth, (req, res) => {
     (input.progress === 100 && existing.progress !== 100)
 
   if (becameAchieved) {
-    db.prepare(`
-      UPDATE users SET achieved_goals = achieved_goals + 1, trust_score = MIN(100, trust_score + 5)
-      WHERE id = ?
-    `).run(existing.user_id)
+    db.prepare(
+      "UPDATE users SET achieved_goals = achieved_goals + 1, updated_at = datetime('now') WHERE id = ?"
+    ).run(existing.user_id)
+    adjustTrustScore(existing.user_id, 5, "goal_achieved", {
+      type: "goal",
+      id: existing.id,
+    })
     notifyGoalAchieved(existing.user_id, existing.title, existing.id)
     notifyWitnesses(existing.id, existing.title, "achieved")
   }
 
   if (input.status === "abandoned" && existing.status !== "abandoned") {
-    db.prepare(`
-      UPDATE users SET abandoned_goals = abandoned_goals + 1, trust_score = MAX(0, trust_score - 5)
-      WHERE id = ?
-    `).run(existing.user_id)
+    db.prepare(
+      "UPDATE users SET abandoned_goals = abandoned_goals + 1, updated_at = datetime('now') WHERE id = ?"
+    ).run(existing.user_id)
+    adjustTrustScore(existing.user_id, -5, "goal_abandoned", {
+      type: "goal",
+      id: existing.id,
+    })
   }
 
   const updated = db.prepare("SELECT * FROM goals WHERE id = ?").get(param(req.params.id)) as any
@@ -127,7 +141,10 @@ router.post("/:id/claim-reward", requireAuth, (req, res) => {
   }
 
   db.prepare(`
-    UPDATE goals SET reward_claimed = 1, status = 'reward_claimed' WHERE id = ?
+    UPDATE goals
+    SET reward_claimed = 1, status = 'reward_claimed',
+        reward_claimed_at = datetime('now'), updated_at = datetime('now')
+    WHERE id = ?
   `).run(param(req.params.id))
 
   createNotification(
@@ -175,8 +192,17 @@ router.post("/:id/witnesses", requireAuth, (req, res) => {
     name = user.name
   }
 
-  const witness = addWitness(param(req.params.id), witnessUserId || null, name, req.user!.userId)
-  res.status(201).json(witness)
+  try {
+    const witness = addWitness(param(req.params.id), witnessUserId || null, name)
+    res.status(201).json(witness)
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err)
+    if (msg.includes("UNIQUE")) {
+      res.status(409).json({ error: "该目标已有见证人（初版建议 1 人）" })
+      return
+    }
+    throw err
+  }
 })
 
 router.patch("/:id/witnesses/:witnessId", requireAuth, (req, res) => {
@@ -221,15 +247,16 @@ router.delete("/:id", requireAuth, (req, res) => {
   `).get(param(req.params.id), req.user!.userId) as any
   if (!existing) { res.status(404).json({ error: "Goal not found" }); return }
   db.prepare("DELETE FROM goals WHERE id = ?").run(param(req.params.id))
-  db.prepare("UPDATE users SET total_goals = MAX(0, total_goals - 1) WHERE id = ?").run(existing.user_id)
+  db.prepare(
+    "UPDATE users SET total_goals = MAX(0, total_goals - 1), updated_at = datetime('now') WHERE id = ?"
+  ).run(existing.user_id)
   res.status(204).send()
 })
 
 function addWitness(
   goalId: string,
   witnessUserId: string | null,
-  witnessName: string,
-  ownerUserId: string
+  witnessName: string
 ): GoalWitness {
   const db = getDb()
   const id = uuid()
@@ -261,11 +288,11 @@ function notifyWitnesses(goalId: string, goalTitle: string, event: string): void
   `).all(goalId) as { witness_user_id: string; witness_name: string }[]
 
   for (const w of witnesses) {
-    // 监督他人达成：已确认的见证人获得成就点（信任分）
     if (event === "achieved") {
-      db.prepare(`
-        UPDATE users SET trust_score = MIN(100, trust_score + 3) WHERE id = ?
-      `).run(w.witness_user_id)
+      adjustTrustScore(w.witness_user_id, 3, "witness_goal_achieved", {
+        type: "goal",
+        id: goalId,
+      })
     }
     createNotification(
       w.witness_user_id,
