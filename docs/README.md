@@ -62,11 +62,11 @@ contract-spirit/
 | [data-model.md](data-model.md) | **数据模型** — 表结构、信任分规则 |
 | [database.md](database.md) | **数据库运维** — 备份、迁移、健康检查 |
 | [versions/README.md](versions/README.md) | **初版 / 终极版** — 范围拆分 |
-| [roadmap/feedback/](roadmap/feedback/) | **上线反馈运营** — 征集、digest、给总负责人的任务简报 |
+| [roadmap/feedback/](roadmap/feedback/) | **反馈窗运营** — [推广计划](roadmap/feedback/promotion-plan.md)、digest、给总负责人的任务简报 |
 | [roadmap/agents/](roadmap/agents/) | **Agent 任务板 + [STATUS](roadmap/agents/STATUS.md)** — 总负责人分派与监督 |
 | [roadmap/README.md](roadmap/README.md) | 路线总入口 · 快速轨 / 完整初版轨 |
-| [product-roles.md](product-roles.md) | **角色 IA** — 我的 / 他人双套结构（导航 + 创建选角） |
-| [design.md](design.md) | **UI/UX（初版）** |
+| [product-roles.md](product-roles.md) | **角色 IA** — 我的 / 他人、解锁门禁、成长条规划 |
+| [design.md](design.md) | **UI/UX** — 墨色印章风、市场对照、双角色门禁体验 |
 | [features.md](features.md) | **功能规格（初版）** |
 | [testing.md](testing.md) | **测试与回归** — 用例库、自动化、发版 DoD |
 | [deployment.md](deployment.md) | **部署** |

@@ -7,6 +7,8 @@ import { FormLabel } from "@/components/ui/form-label"
 import { useAuth } from "@/lib/auth-context"
 import { submitFeedback, track } from "@/lib/analytics"
 import { ApiError } from "@/lib/api"
+import { FEEDBACK_WINDOW, isFeedbackWindowOpen } from "@/lib/feedback-window"
+import { FeedbackWindowBanner } from "@/components/feedback/feedback-window-banner"
 
 export default function FeedbackPage() {
   const { user } = useAuth()
@@ -39,9 +41,21 @@ export default function FeedbackPage() {
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-seal">Feedback</p>
         <h1 className="mt-1 font-display text-3xl font-black">意见反馈</h1>
         <p className="mt-2 text-sm text-muted">
-          初版上线，重点是听你怎么用。卡点、看不懂、想要的功能，都欢迎直接说。
+          {isFeedbackWindowOpen()
+            ? `第 1 波反馈窗（${FEEDBACK_WINDOW.startLabel}～${FEEDBACK_WINDOW.endLabel}）：重点听你怎么用主闭环。`
+            : "初版上线，重点是听你怎么用。卡点、看不懂、想要的功能，都欢迎直接说。"}
         </p>
       </div>
+
+      {isFeedbackWindowOpen() && <FeedbackWindowBanner compact />}
+
+      {isFeedbackWindowOpen() && (
+        <ul className="space-y-1.5 border-l-2 border-seal/40 pl-3 text-sm text-muted">
+          {FEEDBACK_WINDOW.askHints.map((q) => (
+            <li key={q}>{q}</li>
+          ))}
+        </ul>
+      )}
 
       <Card>
         <form onSubmit={handleSubmit} className="space-y-4">

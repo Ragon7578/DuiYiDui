@@ -11,6 +11,7 @@ import { fetchGoals, fetchContracts, claimReward } from "@/lib/api-client"
 import { track } from "@/lib/analytics"
 import { formatDate } from "@/lib/utils"
 import type { Goal, Contract } from "@/lib/types"
+import { FeedbackWindowBanner } from "@/components/feedback/feedback-window-banner"
 
 /** 首页 = 欢迎页；登录后在下方展示进行中事项 */
 export default function Home() {
@@ -26,6 +27,7 @@ export default function Home() {
 
   return (
     <div className="space-y-10">
+      <FeedbackWindowBanner />
       <WelcomeHero
         loggedIn={Boolean(user)}
         userName={user?.name}
@@ -62,7 +64,7 @@ function WelcomeHero({
       <p className="mt-4 max-w-xl text-base text-muted md:text-lg">
         {loggedIn
           ? `你好，${userName}。写下一件要对得起自己的事，想好奖励，做到了就去兑现。`
-          : "把目标与奖励写清楚。给自己的项目、给别人的项目，都能涨成就点。"}
+          : "把承诺与奖励写清楚。给自己的项目、给别人的项目，都能涨成就点。"}
       </p>
       {loggedIn && trustScore != null && (
         <p className="mt-2 text-sm text-muted">履约档案 · 信任分 {trustScore}</p>
