@@ -51,12 +51,24 @@ router.post("/", requireAuth, (req, res) => {
   ).run(userId)
 
   if (input.witnessUserId) {
-    const witness = getUserById(input.witnessUserId)
-    if (witness) {
-      const result = inviteWitness(id, witness.userId)
-      if ("error" in result) {
-        // 创建时邀请失败不阻断承诺创建
-      }
+    if (input.witnessUserId === userId) {
+      db.prepare("DELETE FROM self_commitments WHERE id = ?").run(id)
+      db.prepare("UPDATE users SET total_goals = MAX(0, total_goals - 1) WHERE id = ?").run(userId)
+      res.status(400).json({ error: "cannot invite yourself as witness" })
+      return
+    }
+    if (!getUserById(input.witnessUserId)) {
+      db.prepare("DELETE FROM self_commitments WHERE id = ?").run(id)
+      db.prepare("UPDATE users SET total_goals = MAX(0, total_goals - 1) WHERE id = ?").run(userId)
+      res.status(404).json({ error: "Witness user not found" })
+      return
+    }
+    const result = inviteWitness(id, input.witnessUserId)
+    if ("error" in result) {
+      db.prepare("DELETE FROM self_commitments WHERE id = ?").run(id)
+      db.prepare("UPDATE users SET total_goals = MAX(0, total_goals - 1) WHERE id = ?").run(userId)
+      res.status(409).json({ error: result.error })
+      return
     }
   }
 
@@ -216,17 +228,17 @@ router.post("/:id/witnesses", requireAuth, (req, res) => {
     return
   }
 
-  const { witnessUserId } = req.body
+  const { witnessUserId } = req.body as { witnessUserId?: string }
   if (!witnessUserId) {
     res.status(400).json({ error: "witnessUserId is required (real user only)" })
     return
   }
-  if (witnessUserId === req.user!.userId) {
-    res.status(400).json({ error: "cannot invite yourself as witness" })
-    return
-  }
   if (!getUserById(witnessUserId)) {
     res.status(404).json({ error: "Witness user not found" })
+    return
+  }
+  if (witnessUserId === req.user!.userId) {
+    res.status(400).json({ error: "cannot invite yourself as witness" })
     return
   }
 

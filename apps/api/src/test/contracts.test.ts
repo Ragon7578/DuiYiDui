@@ -154,4 +154,41 @@ describe("他人 · 监督约定", () => {
     expect(meB.body.trustScore).toBe(beforeB.body.trustScore - 15)
     expect(meA.body.breachedContracts).toBe(1)
   })
+
+  it("可更新标题；删除后双方不可见", async () => {
+    const a = await registerUser("编辑甲")
+    const b = await registerUser("编辑乙")
+    await unlockSuperviseForTest(a.token)
+
+    const created = await request(getTestApp())
+      .post("/api/contracts")
+      .set(auth(a.token))
+      .send({
+        title: "旧标题",
+        parties: [{ id: b.user.id }],
+        clauses: [{ content: "每周复盘" }],
+      })
+      .expect(201)
+
+    const updated = await request(getTestApp())
+      .patch(`/api/contracts/${created.body.id}`)
+      .set(auth(a.token))
+      .send({ title: "新标题" })
+      .expect(200)
+    expect(updated.body.title).toBe("新标题")
+
+    await request(getTestApp())
+      .delete(`/api/contracts/${created.body.id}`)
+      .set(auth(a.token))
+      .expect(204)
+
+    await request(getTestApp())
+      .get(`/api/contracts/${created.body.id}`)
+      .set(auth(a.token))
+      .expect(404)
+    await request(getTestApp())
+      .get(`/api/contracts/${created.body.id}`)
+      .set(auth(b.token))
+      .expect(404)
+  })
 })

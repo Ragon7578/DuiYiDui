@@ -95,8 +95,8 @@ export interface CreateGoalInput {
   reward: string
   deadline?: string
   userId?: string
+  /** 真实用户 id（见证人须已注册） */
   witnessUserId?: string
-  witnessName?: string
 }
 
 export interface UpdateGoalInput {

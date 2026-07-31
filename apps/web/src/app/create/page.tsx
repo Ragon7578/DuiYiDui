@@ -149,6 +149,8 @@ function CreateForm({
   const [applyKey, setApplyKey] = useState(0)
   const [seedGoal, setSeedGoal] = useState<ParsedGoal | null>(null)
   const [seedContract, setSeedContract] = useState<ParsedContract | null>(null)
+  const { user } = useAuth()
+  const othersLocked = user ? !user.superviseUnlocked : true
 
   useEffect(() => {
     setMode(roleSetToCreateMode(roleSet))
@@ -159,6 +161,10 @@ function CreateForm({
   }, [onboarding, setParam, roleSet])
 
   function switchMode(next: CreateMode) {
+    if (next === "contract" && othersLocked) {
+      router.replace(ROLES.others.createHref + (onboarding ? "&onboarding=1" : ""))
+      return
+    }
     setMode(next)
     const params = new URLSearchParams(searchParams.toString())
     params.set("set", next === "contract" ? ROLES.others.set : ROLES.self.set)
@@ -175,7 +181,10 @@ function CreateForm({
     try {
       const result = await parseIntent(draftText.trim(), mode)
       if (result.mode === "contract") {
-        setMode("contract")
+        if (othersLocked) {
+          setParseError("识别到「他人」约定，但该角色尚未解锁。请先完成足够的「我的」承诺。")
+          return
+        }
         setParsedContracts(result.contracts)
         setParsedGoals([])
         if (result.contracts[0]) {
@@ -183,8 +192,8 @@ function CreateForm({
           setSeedGoal(null)
           setApplyKey((k) => k + 1)
         }
+        switchMode("contract")
       } else {
-        setMode("goal")
         setParsedGoals(result.goals)
         setParsedContracts([])
         if (result.goals[0]) {
@@ -192,12 +201,13 @@ function CreateForm({
           setSeedContract(null)
           setApplyKey((k) => k + 1)
         }
+        switchMode("goal")
       }
       if (
         (result.mode === "goal" && result.goals.length === 0) ||
         (result.mode === "contract" && result.contracts.length === 0)
       ) {
-        setParseError("未能识别出有效信息，请再说具体一点，例如目标和奖励")
+        setParseError("未能识别出有效信息，请再说具体一点，例如承诺内容和奖励")
       }
     } catch (err) {
       setParseError(err instanceof ApiError ? err.message : "识别失败，请重试")
@@ -207,7 +217,6 @@ function CreateForm({
   }
 
   function applyGoal(goal: ParsedGoal) {
-    setMode("goal")
     setSeedGoal(goal)
     setSeedContract(null)
     setApplyKey((k) => k + 1)
@@ -215,7 +224,6 @@ function CreateForm({
   }
 
   function applyContract(contract: ParsedContract) {
-    setMode("contract")
     setSeedContract(contract)
     setSeedGoal(null)
     setApplyKey((k) => k + 1)
@@ -237,7 +245,7 @@ function CreateForm({
           {activeRole.navLabel}
         </p>
         <h1 className="mt-1 font-display text-3xl font-black tracking-tight">
-          {onboarding && mode === "goal" ? "写下第一个目标" : activeRole.createLabel}
+          {onboarding && mode === "goal" ? "写下第一条承诺" : activeRole.createLabel}
         </h1>
         <p className="mt-2 text-sm text-muted">
           {onboarding && mode === "goal"
@@ -300,7 +308,7 @@ function CreateForm({
           {parsedGoals.length > 1 && (
             <div className="space-y-2 border-t border-line pt-3">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted">
-                识别到多个目标 · 点击填入
+                识别到多条「我的」承诺 · 点击填入
               </p>
               {parsedGoals.map((g, i) => (
                 <button
@@ -322,7 +330,7 @@ function CreateForm({
           {parsedContracts.length > 1 && (
             <div className="space-y-2 border-t border-line pt-3">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted">
-                识别到多份契约 · 点击填入
+                识别到多份「他人」约定 · 点击填入
               </p>
               {parsedContracts.map((c, i) => (
                 <button
@@ -346,21 +354,24 @@ function CreateForm({
       {!onboarding && (
         <div className="flex gap-2 border-b border-line pb-3">
           <button
-            onClick={() => setMode("goal")}
+            type="button"
+            onClick={() => switchMode("goal")}
             className={`relative px-4 py-2 text-sm font-semibold transition ${
               mode === "goal" ? "text-ink" : "text-muted hover:text-ink"
             }`}
           >
-            创建目标
+            {ROLES.self.navLabel}
             {mode === "goal" && <span className="absolute inset-x-2 -bottom-3 h-0.5 bg-seal" />}
           </button>
           <button
-            onClick={() => setMode("contract")}
+            type="button"
+            onClick={() => switchMode("contract")}
             className={`relative px-4 py-2 text-sm font-semibold transition ${
               mode === "contract" ? "text-ink" : "text-muted hover:text-ink"
             }`}
           >
-            创建契约
+            {ROLES.others.navLabel}
+            {othersLocked && <span className="ml-1 text-[10px] font-normal text-muted">未解锁</span>}
             {mode === "contract" && <span className="absolute inset-x-2 -bottom-3 h-0.5 bg-seal" />}
           </button>
         </div>
@@ -388,7 +399,6 @@ function GoalForm({
   const [reward, setReward] = useState(seed?.reward || "")
   const [deadline, setDeadline] = useState(seed?.deadline || "")
   const [witnessUserId, setWitnessUserId] = useState("")
-  const [witnessName, setWitnessName] = useState("")
   const users = useOtherUsers()
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
@@ -398,20 +408,18 @@ function GoalForm({
     setError("")
     setLoading(true)
     try {
-      const nameOnly = !witnessUserId && witnessName.trim() ? witnessName.trim() : undefined
       await createGoal({
         title,
         description: description || undefined,
         reward,
         deadline: deadline || undefined,
         witnessUserId: witnessUserId || undefined,
-        witnessName: nameOnly,
       })
       track("create_goal", {
-        hasWitness: Boolean(witnessUserId || nameOnly),
+        hasWitness: Boolean(witnessUserId),
         onboarding: Boolean(onboarding),
       })
-      if (witnessUserId || nameOnly) track("invite_witness")
+      if (witnessUserId) track("invite_witness")
       router.push(onboarding ? "/" : ROLES.self.route)
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "创建失败")
@@ -475,27 +483,14 @@ function GoalForm({
         </div>
         <div className="space-y-3">
           <FormLabel>见证人（建议 1 人，可不选）</FormLabel>
-          <input
-            value={witnessName}
-            onChange={(e) => {
-              setWitnessName(e.target.value)
-              if (e.target.value) setWitnessUserId("")
-            }}
-            placeholder="写下名字，例如：小陈（对方尚未注册也可）"
-            className="input-field"
-            disabled={Boolean(witnessUserId)}
-          />
           <UserSelect
             value={witnessUserId}
-            onChange={(v) => {
-              setWitnessUserId(v)
-              if (v) setWitnessName("")
-            }}
+            onChange={setWitnessUserId}
             users={users}
-            emptyLabel="或选择已注册用户"
+            emptyLabel="稍后再邀请"
           />
           <p className="text-xs text-muted">
-            找一个在乎你说到做到的人。已注册用户确认后，你达成时对方也会涨成就点；仅写名字可先记下，稍后邀请对方注册确认。
+            须为已注册用户。对方确认后，你达成时对方也会涨成就点。
           </p>
         </div>
         <button

@@ -12,6 +12,7 @@ import {
   addGoalWitness,
 } from "@/lib/api-client"
 import { track } from "@/lib/analytics"
+import { ApiError } from "@/lib/api"
 import { formatDate } from "@/lib/utils"
 import { useOtherUsers } from "@/lib/use-other-users"
 import { UserSelect } from "@/components/users/user-select"
@@ -121,7 +122,7 @@ function GoalsContent() {
 function GoalCard({ goal, onUpdate }: { goal: Goal; onUpdate: (g: Goal) => void }) {
   const [witnesses, setWitnesses] = useState<GoalWitness[]>([])
   const [witnessId, setWitnessId] = useState("")
-  const [witnessName, setWitnessName] = useState("")
+  const [inviteError, setInviteError] = useState("")
   const [busy, setBusy] = useState(false)
   const users = useOtherUsers([
     ...(goal.userId ? [goal.userId] : []),
@@ -180,17 +181,16 @@ function GoalCard({ goal, onUpdate }: { goal: Goal; onUpdate: (g: Goal) => void 
   }
 
   async function handleAddWitness() {
-    if (!witnessId && !witnessName.trim()) return
+    if (!witnessId) return
     setBusy(true)
+    setInviteError("")
     try {
-      const w = await addGoalWitness(goal.id, {
-        witnessUserId: witnessId || undefined,
-        witnessName: !witnessId ? witnessName.trim() : undefined,
-      })
+      const w = await addGoalWitness(goal.id, witnessId)
       track("invite_witness")
       setWitnesses((prev) => [...prev, w])
       setWitnessId("")
-      setWitnessName("")
+    } catch (err) {
+      setInviteError(err instanceof ApiError ? err.message : "邀请失败")
     } finally {
       setBusy(false)
     }
@@ -285,34 +285,27 @@ function GoalCard({ goal, onUpdate }: { goal: Goal; onUpdate: (g: Goal) => void 
                 </div>
               )}
               {witnesses.length === 0 && (
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <input
-                    value={witnessName}
-                    onChange={(e) => {
-                      setWitnessName(e.target.value)
-                      if (e.target.value) setWitnessId("")
-                    }}
-                    placeholder="写下名字（可不注册）"
-                    className="input-field flex-1 text-sm"
-                    disabled={Boolean(witnessId)}
-                  />
-                  <UserSelect
-                    value={witnessId}
-                    onChange={(v) => {
-                      setWitnessId(v)
-                      if (v) setWitnessName("")
-                    }}
-                    users={users}
-                    placeholder="已注册用户"
-                    className="input-field text-sm sm:max-w-[10rem]"
-                  />
-                  <button
-                    onClick={handleAddWitness}
-                    disabled={busy || (!witnessId && !witnessName.trim())}
-                    className="rounded border border-line px-3 py-2 text-sm font-semibold hover:border-ink disabled:opacity-50"
-                  >
-                    邀请
-                  </button>
+                <div className="space-y-2">
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <UserSelect
+                      value={witnessId}
+                      onChange={setWitnessId}
+                      users={users}
+                      placeholder="选择已注册用户"
+                      className="input-field flex-1 text-sm"
+                    />
+                    <button
+                      onClick={handleAddWitness}
+                      disabled={busy || !witnessId}
+                      className="rounded border border-line px-3 py-2 text-sm font-semibold hover:border-ink disabled:opacity-50"
+                    >
+                      邀请
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted">见证人须为已注册用户；对方确认后，你达成时对方也会涨成就点。</p>
+                  {inviteError && (
+                    <p className="text-xs text-seal">{inviteError}</p>
+                  )}
                 </div>
               )}
             </div>

@@ -112,20 +112,20 @@ Body：`{ "token", "password", "confirmPassword?" }`
 
 ---
 
-## 目标 `/api/goals`（Self 域 · 物理表 `self_commitments`）
+## 我的 `/api/goals`（Self 域 · 物理表 `self_commitments`）
 
 均需鉴权；列表/写操作按当前用户隔离。
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| GET | `/api/goals` | 当前用户目标列表 |
+| GET | `/api/goals` | 当前用户「我的」承诺列表 |
 | GET | `/api/goals/:id` | 详情 |
-| POST | `/api/goals` | 创建 |
+| POST | `/api/goals` | 创建（`title`+`reward` 必填；可选 `witnessUserId`，须为真实用户） |
 | PATCH | `/api/goals/:id` | 更新（含 progress/status） |
 | DELETE | `/api/goals/:id` | 删除 |
 | POST | `/api/goals/:id/claim-reward` | 达成后兑现奖励 |
 | GET | `/api/goals/:id/witnesses` | 见证人列表 |
-| POST | `/api/goals/:id/witnesses` | 邀请见证人 |
+| POST | `/api/goals/:id/witnesses` | 邀请见证人（Body：`{ witnessUserId }`） |
 | PATCH | `/api/goals/:id/witnesses/:witnessId` | 确认/拒绝 |
 
 ### 创建 Body 示例
@@ -150,7 +150,9 @@ Body：`{ "token", "password", "confirmPassword?" }`
 
 ---
 
-## 契约 `/api/contracts`（Supervise 域 · 物理表 `supervise_*`；参与方须为真实用户）
+## 他人 `/api/contracts`（Supervise 域 · 物理表 `supervise_*`；参与方须为真实用户）
+
+需已解锁他人角色（见下方 `POST /api/profile/unlock-supervise`），否则 **403** `SUPERVISE_LOCKED`。
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
@@ -176,7 +178,12 @@ Body：`{ "token", "password", "confirmPassword?" }`
 
 ### `GET /api/profile`
 
-当前用户完整资料。
+当前用户完整资料，含：
+
+| 字段 | 说明 |
+|------|------|
+| `superviseUnlocked` | 是否已解锁「他人」角色 |
+| `superviseUnlockProgress` / `superviseUnlockRequired` | 解锁进度（已达成「我的」数 / 门槛） |
 
 ### `PATCH /api/profile`
 
@@ -185,7 +192,14 @@ Body：`{ "token", "password", "confirmPassword?" }`
 
 ### `GET /api/profile/stats`
 
-聚合统计。
+聚合统计（我的承诺 + 他人约定计数）。
+
+### `POST /api/profile/unlock-supervise`
+
+申请解锁「他人」角色。须先达成足够数量的「我的」承诺（默认 3，环境变量 `SUPERVISE_UNLOCK_REQUIRED`）。
+
+- **200** → `{ message, user }`（已解锁）
+- **400** `SUPERVISE_UNLOCK_INELIGIBLE` → 未达门槛，body 含 `progress` / `required`
 
 ---
 

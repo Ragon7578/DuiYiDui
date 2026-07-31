@@ -63,6 +63,10 @@ beforeEach(async () => {
   process.env.DB_PATH = dbFile
   process.env.NODE_ENV = "test"
   process.env.JWT_SECRET = "test-jwt-secret-dui-yi-dui"
+  delete process.env.REGISTRATION_INVITE_CODE
+  delete process.env.FEEDBACK_ADMIN_KEY
+  delete process.env.DB_ADMIN_KEY
+  delete process.env.EXPOSE_RESET_URL
 
   // 动态导入，确保 getDb 读到新的 DB_PATH
   const { createApp } = await import("../app.js")

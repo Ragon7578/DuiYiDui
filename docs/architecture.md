@@ -70,9 +70,12 @@ routes/*                 # 按资源拆分
 services/
   notifications.ts       # 截止提醒等
   intent-parser.ts       # 自然语言 → 表单字段（可走 OpenAI）
-db/schema.ts             # Schema + migrateSchema
+  self-commitments.ts    # Self 域读写与见证
+  supervise-agreements.ts # Supervise 域与信任分结算
+  users.ts / user-profile.ts
+db/schema.ts             # Schema + migrateSchema + Self/Supervise 表
 db/seed.ts
-```
+db/mappers.ts            # 行 → API 类型```
 
 ### 路由挂载（逻辑分组）
 
@@ -80,11 +83,14 @@ db/seed.ts
 |------|------|
 | `/api/health` | 健康检查（公开） |
 | `/api/auth` | 注册登录、找回密码、me、用户列表 |
-| `/api/goals` | 目标 CRUD、兑奖、见证人 |
-| `/api/contracts` | 契约与条款 |
+| `/api/goals` | Self：我的承诺 CRUD、兑奖、见证人 |
+| `/api/contracts` | Supervise：他人约定与条款（需解锁） |
 | `/api/pledges` | 轻量承诺 |
-| `/api/profile` | 资料与统计 |
+| `/api/profile` | 资料、统计、解锁他人角色 |
 | `/api/notifications` | 通知 |
+| `/api/feedback` | 意见反馈 |
+| `/api/events` | 埋点 |
+| `/api/db` | 运维元信息（若启用） |
 | `/api/ai` | `POST /parse` |
 
 业务路由默认 `requireAuth`。
@@ -112,10 +118,11 @@ JWT payload: { userId, username }
 
 | 事件 | 变化 |
 |------|------|
-| 目标达成 | +5（封顶 100） |
-| 目标放弃 | -5（保底 0） |
-| 契约履行相关 | +10 |
-| 契约违约相关 | -15 |
+| 我的承诺达成 | +5（封顶 100） |
+| 我的承诺放弃 | -5（保底 0） |
+| 他人约定履约 | +10 |
+| 他人约定违约 | -15 |
+| 已确认见证人，对方承诺达成 | +3 |
 | 新用户默认 | 50 |
 
 以 `apps/api` 路由内 SQL 为准。

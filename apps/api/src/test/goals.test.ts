@@ -98,6 +98,43 @@ describe("我的 · 自我承诺闭环", () => {
       .expect(404)
   })
 
+  it("见证人须为真实用户；仅写姓名无效", async () => {
+    const { token } = await registerUser("见证人校验")
+    const goal = await request(getTestApp())
+      .post("/api/goals")
+      .set(auth(token))
+      .send({ title: "早起", reward: "咖啡" })
+      .expect(201)
+
+    await request(getTestApp())
+      .post(`/api/goals/${goal.body.id}/witnesses`)
+      .set(auth(token))
+      .send({ witnessName: "路人甲" })
+      .expect(400)
+
+    await request(getTestApp())
+      .post(`/api/goals/${goal.body.id}/witnesses`)
+      .set(auth(token))
+      .send({})
+      .expect(400)
+  })
+
+  it("创建时邀请无效见证人则整单失败", async () => {
+    const { token } = await registerUser("创建见证人失败")
+    await request(getTestApp())
+      .post("/api/goals")
+      .set(auth(token))
+      .send({
+        title: "读完一本书",
+        reward: "电影",
+        witnessUserId: "not-a-real-user",
+      })
+      .expect(404)
+
+    const list = await request(getTestApp()).get("/api/goals").set(auth(token)).expect(200)
+    expect(list.body).toHaveLength(0)
+  })
+
   it("见证人邀请 → 确认 → 达成时 +3 信任分", async () => {
     const owner = await registerUser("目标主")
     const witness = await registerUser("见证人")
@@ -145,5 +182,74 @@ describe("我的 · 自我承诺闭环", () => {
       .expect(200)
     expect(notes.body.some((n: { type: string }) => n.type === "witness_invite")).toBe(true)
     expect(notes.body.some((n: { type: string }) => n.type === "goal_achieved")).toBe(true)
+  })
+
+  it("列表暴露待兑现；达成产生 goal_achieved / reward_ready 通知", async () => {
+    const { token } = await registerUser("待兑用户")
+    const created = await request(getTestApp())
+      .post("/api/goals")
+      .set(auth(token))
+      .send({ title: "冥想21天", reward: "香薰" })
+      .expect(201)
+
+    await request(getTestApp())
+      .patch(`/api/goals/${created.body.id}`)
+      .set(auth(token))
+      .send({ progress: 100 })
+      .expect(200)
+
+    const list = await request(getTestApp()).get("/api/goals").set(auth(token)).expect(200)
+    const pending = list.body.find((g: { id: string }) => g.id === created.body.id)
+    expect(pending.status).toBe("achieved")
+    expect(pending.rewardClaimed).toBe(false)
+    expect(pending.reward).toBe("香薰")
+
+    const notes = await request(getTestApp()).get("/api/notifications").set(auth(token)).expect(200)
+    expect(notes.body.some((n: { type: string }) => n.type === "goal_achieved")).toBe(true)
+    expect(notes.body.some((n: { type: string }) => n.type === "reward_ready")).toBe(true)
+  })
+
+  it("创建时可带 witnessUserId 邀请；可拒绝；双方可读见证列表", async () => {
+    const owner = await registerUser("见证主人")
+    const witness = await registerUser("姓名见证")
+    const outsider = await registerUser("路人甲")
+
+    const goal = await request(getTestApp())
+      .post("/api/goals")
+      .set(auth(owner.token))
+      .send({ title: "早起", reward: "咖啡", witnessUserId: witness.user.id })
+      .expect(201)
+
+    const witnesses = await request(getTestApp())
+      .get(`/api/goals/${goal.body.id}/witnesses`)
+      .set(auth(owner.token))
+      .expect(200)
+    expect(witnesses.body).toHaveLength(1)
+    expect(witnesses.body[0].witnessUserId).toBe(witness.user.id)
+
+    await request(getTestApp())
+      .get(`/api/goals/${goal.body.id}/witnesses`)
+      .set(auth(witness.token))
+      .expect(200)
+
+    await request(getTestApp())
+      .get(`/api/goals/${goal.body.id}/witnesses`)
+      .set(auth(outsider.token))
+      .expect(404)
+
+    await request(getTestApp())
+      .patch(`/api/goals/${goal.body.id}/witnesses/${witnesses.body[0].id}`)
+      .set(auth(witness.token))
+      .send({ status: "declined" })
+      .expect(200)
+
+    await request(getTestApp())
+      .patch(`/api/goals/${goal.body.id}`)
+      .set(auth(owner.token))
+      .send({ progress: 100 })
+      .expect(200)
+
+    const witnessMe = await request(getTestApp()).get("/api/auth/me").set(auth(witness.token)).expect(200)
+    expect(witnessMe.body.trustScore).toBe(witness.user.trustScore)
   })
 })

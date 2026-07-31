@@ -117,11 +117,11 @@ npm run build -w @contract-spirit/api
 
 | 路由 | 说明 |
 |------|------|
-| `/` | 首页仪表盘 |
-| `/goals` | 目标列表 |
-| `/contracts`、`/contracts/[id]` | 契约 |
+| `/` | 首页（欢迎 / 登录后摘要） |
+| `/goals` | 我的 · 给自己的项目 |
+| `/contracts`、`/contracts/[id]` | 他人 · 给别人的项目 |
 | `/pledges` | 轻量承诺（页面存在，主导航未挂） |
-| `/create` | 创建目标 / 契约（语音 + AI 填表） |
+| `/create` | 创建（先选角 `?set=self\|others`；语音 + AI 填表） |
 | `/profile` | 个人资料与统计 |
 | `/notifications` | 通知 |
 | `/login` `/register` | 登录注册 |

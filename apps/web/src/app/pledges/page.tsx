@@ -38,7 +38,7 @@ function PledgesContent() {
     <div className="space-y-6">
       <div>
         <h1 className="font-display text-3xl font-black tracking-tight">轻量承诺</h1>
-        <p className="mt-1 text-sm text-muted">非正式记录 · 主路径请用带奖励的目标</p>
+        <p className="mt-1 text-sm text-muted">非正式记录 · 主路径请用带奖励的「我的」承诺</p>
       </div>
       <div className="space-y-3">
         {pledges.map((p) => (
@@ -77,10 +77,10 @@ function PledgesContent() {
           <div className="rounded border border-dashed border-line px-6 py-12 text-center">
             <p className="font-display text-lg font-bold">这里很安静</p>
             <p className="mt-2 text-sm text-muted">
-              轻量承诺不进主导航。想认真兑奖，去创建一个带奖励的目标。
+              轻量承诺不进主导航。想认真兑奖，去创建一个带奖励的「我的」承诺。
             </p>
-            <Link href="/create" className="btn-primary mt-4 inline-block px-4 py-2 text-sm">
-              创建带奖励的目标
+            <Link href="/create?set=self" className="btn-primary mt-4 inline-block px-4 py-2 text-sm">
+              创建带奖励的承诺
             </Link>
           </div>
         )}

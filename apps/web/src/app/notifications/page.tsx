@@ -146,7 +146,7 @@ function NotificationsContent() {
           <div className="rounded border border-dashed border-line px-6 py-12 text-center">
             <p className="font-display text-lg font-bold">还没有消息</p>
             <p className="mt-2 text-sm text-muted">
-              有人请你见证，或目标达成需要兑奖时，会在这里出现。
+              有人请你见证，或承诺达成需要兑奖时，会在这里出现。
             </p>
           </div>
         )}

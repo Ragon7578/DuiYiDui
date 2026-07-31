@@ -111,4 +111,61 @@ describe("资料与通知", () => {
       .send({ message: "希望增加周报提醒功能，很好用。" })
       .expect(201)
   })
+
+  it("反馈过短拒绝；邮箱格式与重复绑定校验", async () => {
+    await request(getTestApp())
+      .post("/api/feedback")
+      .send({ message: "短" })
+      .expect(400)
+
+    const a = await registerUser("邮箱甲")
+    const b = await registerUser("邮箱乙")
+
+    await request(getTestApp())
+      .patch("/api/profile")
+      .set(auth(a.token))
+      .send({ email: "not-an-email" })
+      .expect(400)
+
+    await request(getTestApp())
+      .patch("/api/profile")
+      .set(auth(a.token))
+      .send({ email: "shared@example.com" })
+      .expect(200)
+
+    await request(getTestApp())
+      .patch("/api/profile")
+      .set(auth(b.token))
+      .send({ email: "shared@example.com" })
+      .expect(409)
+  })
+
+  it("截止日前 3 天生成 goal_deadline，且只生成一次", async () => {
+    const { token } = await registerUser("截止用户")
+    const deadline = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+
+    const created = await request(getTestApp())
+      .post("/api/goals")
+      .set(auth(token))
+      .send({ title: "临期目标", reward: "休息一天", deadline })
+      .expect(201)
+
+    await request(getTestApp()).get("/api/profile/stats").set(auth(token)).expect(200)
+    await request(getTestApp()).get("/api/notifications").set(auth(token)).expect(200)
+
+    const notes1 = await request(getTestApp()).get("/api/notifications").set(auth(token)).expect(200)
+    const deadlines = notes1.body.filter(
+      (n: { type: string; relatedId?: string }) =>
+        n.type === "goal_deadline" && n.relatedId === created.body.id
+    )
+    expect(deadlines).toHaveLength(1)
+
+    await request(getTestApp()).get("/api/profile/stats").set(auth(token)).expect(200)
+    const notes2 = await request(getTestApp()).get("/api/notifications").set(auth(token)).expect(200)
+    const deadlines2 = notes2.body.filter(
+      (n: { type: string; relatedId?: string }) =>
+        n.type === "goal_deadline" && n.relatedId === created.body.id
+    )
+    expect(deadlines2).toHaveLength(1)
+  })
 })

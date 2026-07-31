@@ -100,7 +100,6 @@ export function createGoal(data: {
   description?: string
   deadline?: string
   witnessUserId?: string
-  witnessName?: string
 }) {
   return apiFetch<Goal>("/api/goals", {
     method: "POST",
@@ -134,13 +133,10 @@ export function fetchGoalWitnesses(goalId: string) {
   return apiFetch<GoalWitness[]>(`/api/goals/${goalId}/witnesses`)
 }
 
-export function addGoalWitness(
-  goalId: string,
-  data: { witnessUserId?: string; witnessName?: string }
-) {
+export function addGoalWitness(goalId: string, witnessUserId: string) {
   return apiFetch<GoalWitness>(`/api/goals/${goalId}/witnesses`, {
     method: "POST",
-    body: JSON.stringify(data),
+    body: JSON.stringify({ witnessUserId }),
   })
 }
 

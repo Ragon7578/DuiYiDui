@@ -68,4 +68,14 @@ describe("他人角色解锁", () => {
       })
       .expect(201)
   })
+
+  it("重复解锁幂等", async () => {
+    const app = getTestApp()
+    const { token } = await registerUser("幂等解锁")
+    await achieveGoals(token, 3)
+    const first = await request(app).post("/api/profile/unlock-supervise").set(auth(token)).expect(200)
+    expect(first.body.user.superviseUnlocked).toBe(true)
+    const second = await request(app).post("/api/profile/unlock-supervise").set(auth(token)).expect(200)
+    expect(second.body.user.superviseUnlocked).toBe(true)
+  })
 })
