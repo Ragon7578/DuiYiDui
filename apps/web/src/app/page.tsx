@@ -293,6 +293,7 @@ function HomeDashboard() {
               <Link href={ROLES.others.createHref} className="font-semibold text-seal hover:underline">
                 找人一起立约
               </Link>
+              。需真实账号参与。
             </p>
           )}
         </div>

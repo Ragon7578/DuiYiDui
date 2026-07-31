@@ -5,9 +5,7 @@ import { usePathname, useRouter } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
 import { useAuth } from "@/lib/auth-context"
 import { fetchUnreadCount } from "@/lib/api-client"
-
 import { ROLES } from "@/lib/roles"
-import { useAuth } from "@/lib/auth-context"
 
 /** 顶层按角色：我的(Self) / 他人(Others)；路由暂仍用 goals/contracts */
 const mainLinks = [

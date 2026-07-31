@@ -77,12 +77,20 @@ function ContractsContent() {
           <div className="rounded border border-dashed border-line px-6 py-12 text-center">
             <p className="font-display text-lg font-bold">还没有他人项目</p>
             <p className="mt-2 text-sm text-muted">找一个真实用户一起立约，盯着说到做到。</p>
-            <Link
-              href={ROLES.others.createHref}
-              className="btn-primary mt-4 inline-block px-4 py-2 text-sm"
-            >
-              创建给别人的项目
-            </Link>
+            <div className="mt-4 flex flex-wrap justify-center gap-3">
+              <Link
+                href={ROLES.others.createHref}
+                className="btn-primary inline-block px-4 py-2 text-sm"
+              >
+                创建给别人的项目
+              </Link>
+              <Link
+                href={ROLES.self.route}
+                className="inline-block rounded border border-line px-4 py-2 text-sm font-semibold hover:border-ink"
+              >
+                先看「我的」
+              </Link>
+            </div>
           </div>
         )}
       </div>

@@ -28,6 +28,15 @@ function getProfile(userId: string): UserProfile | null {
   return row ? rowToProfile(row) : null
 }
 
+function registrationInviteRequired(): boolean {
+  return Boolean((process.env.REGISTRATION_INVITE_CODE || "").trim())
+}
+
+/** 注册策略（公开）：前端据此展示邀请码输入框 */
+router.get("/registration-policy", (_req, res) => {
+  res.json({ inviteCodeRequired: registrationInviteRequired() })
+})
+
 /** 注册：仅用户名 + 密码，个人资料登录后补充 */
 router.post(
   "/register",
@@ -39,6 +48,16 @@ router.post(
   const confirmPassword = req.body.confirmPassword != null
     ? String(req.body.confirmPassword)
     : password
+  const inviteCode = String(req.body.inviteCode || "").trim()
+
+  const requiredInvite = registrationInviteRequired()
+  if (requiredInvite) {
+    const expected = (process.env.REGISTRATION_INVITE_CODE || "").trim()
+    if (!inviteCode || inviteCode !== expected) {
+      res.status(403).json({ error: "邀请码无效或未填写" })
+      return
+    }
+  }
 
   if (!username || !password) {
     res.status(400).json({ error: "请填写用户名和密码" })

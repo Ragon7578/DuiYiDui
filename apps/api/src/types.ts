@@ -96,6 +96,7 @@ export interface CreateGoalInput {
   deadline?: string
   userId?: string
   witnessUserId?: string
+  witnessName?: string
 }
 
 export interface UpdateGoalInput {

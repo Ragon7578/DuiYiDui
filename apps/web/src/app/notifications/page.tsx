@@ -80,7 +80,10 @@ function NotificationsContent() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="font-display text-2xl font-bold tracking-tight">通知</h1>
+        <div>
+          <h1 className="font-display text-3xl font-black tracking-tight">通知</h1>
+          <p className="mt-1 text-sm text-muted">见证邀约、达成与兑奖提醒</p>
+        </div>
         {unread > 0 && (
           <button
             onClick={handleReadAll}
@@ -108,16 +111,16 @@ function NotificationsContent() {
                   <button
                     onClick={() => handleWitnessAction(n, "confirmed")}
                     disabled={busyId === n.id}
-                    className="rounded bg-ok px-3 py-1 text-xs font-semibold text-white hover:opacity-90 disabled:opacity-50"
+                    className="btn-primary px-3 py-1 text-xs disabled:opacity-50"
                   >
                     接受见证
                   </button>
                   <button
                     onClick={() => handleWitnessAction(n, "declined")}
                     disabled={busyId === n.id}
-                    className="rounded border border-line px-3 py-1 text-xs hover:border-ink disabled:opacity-50"
+                    className="rounded border border-line px-3 py-1 text-xs font-semibold hover:border-ink disabled:opacity-50"
                   >
-                    拒绝
+                    婉拒
                   </button>
                 </div>
               )}
@@ -140,7 +143,12 @@ function NotificationsContent() {
           </Card>
         ))}
         {notifications.length === 0 && (
-          <p className="text-sm text-muted">暂无通知</p>
+          <div className="rounded border border-dashed border-line px-6 py-12 text-center">
+            <p className="font-display text-lg font-bold">还没有消息</p>
+            <p className="mt-2 text-sm text-muted">
+              有人请你见证，或目标达成需要兑奖时，会在这里出现。
+            </p>
+          </div>
         )}
       </div>
     </div>

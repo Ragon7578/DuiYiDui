@@ -189,7 +189,12 @@ function ProfileContent() {
             </div>
           ))}
           {goals.length === 0 && (
-            <p className="text-sm text-muted">暂无承诺记录</p>
+            <p className="text-sm text-muted">
+              还没有承诺。{" "}
+              <Link href={ROLES.self.createHref} className="font-semibold text-seal hover:underline">
+                写下一件要对得起自己的事
+              </Link>
+            </p>
           )}
         </div>
       </Card>

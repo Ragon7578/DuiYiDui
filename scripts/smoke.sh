@@ -20,9 +20,13 @@ echo "[smoke] health @ ${API_URL}"
 curl -sf "${API_URL}/api/health" | grep -q '"status":"ok"' || die "health"
 
 echo "[smoke] register ${USER}"
+REG_BODY="{\"username\":\"${USER}\",\"password\":\"${PASS}\",\"confirmPassword\":\"${PASS}\"}"
+if [[ -n "${REGISTRATION_INVITE_CODE:-}" ]]; then
+  REG_BODY="{\"username\":\"${USER}\",\"password\":\"${PASS}\",\"confirmPassword\":\"${PASS}\",\"inviteCode\":\"${REGISTRATION_INVITE_CODE}\"}"
+fi
 REG="$(curl -sf -X POST "${API_URL}/api/auth/register" \
   -H 'Content-Type: application/json' \
-  -d "{\"username\":\"${USER}\",\"password\":\"${PASS}\",\"confirmPassword\":\"${PASS}\"}")" \
+  -d "$REG_BODY")" \
   || die "register"
 TOKEN="$(printf '%s' "$REG" | json_field "['token']")" || die "token"
 

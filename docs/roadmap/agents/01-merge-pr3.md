@@ -13,9 +13,9 @@
 
 ## Must
 
-- [ ] Review PR #3 diff（F2 UX + 邀请码 + 部署脚本 + 文档）
+- [x] Review PR #3 diff（F2 UX + 邀请码 + 部署脚本 + 文档）
 - [ ] CI/本地：`npm run build`、`npm run smoke`（API 本地起）
-- [ ] 合并 PR；删分支 `cursor/f2-ux-polish-c614`（可选）
+- [x] 合并 PR；删分支 `cursor/f2-ux-polish-c614`（可选）
 - [ ] 确认 `main` 上 `docs/roadmap/fast-launch.md` F2 为已勾选
 
 ## 不做
@@ -30,4 +30,4 @@
 
 ## 完成后
 
-启动 [02-staging-compose.md](./02-staging-compose.md) 或 [03-public-https.md](./03-public-https.md)。
+启动 [02-staging-compose.md](./02-staging-compose.md) 或 [03-public-https.md](./03-public-https.md)；并推进 [08-database.md](./08-database.md)。

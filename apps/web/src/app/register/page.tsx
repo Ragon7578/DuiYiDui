@@ -1,11 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Card } from "@/components/ui/card"
 import { FormLabel } from "@/components/ui/form-label"
 import { useAuth } from "@/lib/auth-context"
+import { fetchRegistrationPolicy } from "@/lib/api-client"
 import { ApiError } from "@/lib/api"
 
 export default function RegisterPage() {
@@ -14,11 +15,23 @@ export default function RegisterPage() {
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
+  const [inviteCode, setInviteCode] = useState("")
+  const [inviteRequired, setInviteRequired] = useState(false)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  const goingOnboarding = useRef(false)
 
   useEffect(() => {
-    if (!authLoading && user) router.replace("/")
+    fetchRegistrationPolicy()
+      .then((p) => setInviteRequired(p.inviteCodeRequired))
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    // 注册成功会先 set user，再 push onboarding；勿抢跑回首页
+    if (!authLoading && user && !goingOnboarding.current) {
+      router.replace("/")
+    }
   }, [authLoading, user, router])
 
   async function handleSubmit(e: React.FormEvent) {
@@ -36,9 +49,16 @@ export default function RegisterPage() {
 
     setLoading(true)
     try {
-      await register(username.trim(), password, confirmPassword)
-      router.push("/create?onboarding=1")
+      goingOnboarding.current = true
+      await register(
+        username.trim(),
+        password,
+        confirmPassword,
+        inviteRequired ? inviteCode.trim() : undefined
+      )
+      router.replace("/create?onboarding=1")
     } catch (err) {
+      goingOnboarding.current = false
       setError(err instanceof ApiError ? err.message : "注册失败")
     } finally {
       setLoading(false)
@@ -52,7 +72,11 @@ export default function RegisterPage() {
           兑一兑
         </p>
         <h1 className="mt-4 font-display text-2xl font-bold">注册</h1>
-        <p className="mt-2 text-sm text-muted">用户名 + 密码即可开始。写下承诺与奖励，说到做到。</p>
+        <p className="mt-2 text-sm text-muted">
+          {inviteRequired
+            ? "初版邀请制开放：填写邀请码后注册，写下承诺与奖励。"
+            : "用户名 + 密码即可开始。写下承诺与奖励，说到做到。"}
+        </p>
       </div>
 
       <Card className="animate-rise-delay-1">
@@ -61,6 +85,20 @@ export default function RegisterPage() {
             <p className="rounded border border-seal/30 bg-seal-soft px-3 py-2 text-sm text-seal">
               {error}
             </p>
+          )}
+          {inviteRequired && (
+            <div>
+              <FormLabel required>邀请码</FormLabel>
+              <input
+                name="inviteCode"
+                value={inviteCode}
+                onChange={(e) => setInviteCode(e.target.value)}
+                placeholder="向邀请人索取"
+                className="input-field"
+                required
+              />
+              <p className="mt-1 text-xs text-muted">公网开放前可设邀请码，防止随意注册。</p>
+            </div>
           )}
           <div>
             <FormLabel required>用户名</FormLabel>

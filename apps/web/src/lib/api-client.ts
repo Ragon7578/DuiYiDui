@@ -22,15 +22,20 @@ export function login(username: string, password: string) {
   })
 }
 
-export function register(username: string, password: string, confirmPassword?: string) {
+export function register(username: string, password: string, confirmPassword?: string, inviteCode?: string) {
   return apiFetch<LoginResponse>("/api/auth/register", {
     method: "POST",
     body: JSON.stringify({
       username,
       password,
       confirmPassword: confirmPassword ?? password,
+      inviteCode: inviteCode || undefined,
     }),
   })
+}
+
+export function fetchRegistrationPolicy() {
+  return apiFetch<{ inviteCodeRequired: boolean }>("/api/auth/registration-policy")
 }
 
 export function fetchMe() {
@@ -95,6 +100,7 @@ export function createGoal(data: {
   description?: string
   deadline?: string
   witnessUserId?: string
+  witnessName?: string
 }) {
   return apiFetch<Goal>("/api/goals", {
     method: "POST",
@@ -128,10 +134,13 @@ export function fetchGoalWitnesses(goalId: string) {
   return apiFetch<GoalWitness[]>(`/api/goals/${goalId}/witnesses`)
 }
 
-export function addGoalWitness(goalId: string, witnessUserId: string) {
+export function addGoalWitness(
+  goalId: string,
+  data: { witnessUserId?: string; witnessName?: string }
+) {
   return apiFetch<GoalWitness>(`/api/goals/${goalId}/witnesses`, {
     method: "POST",
-    body: JSON.stringify({ witnessUserId }),
+    body: JSON.stringify(data),
   })
 }
 

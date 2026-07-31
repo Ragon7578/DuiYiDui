@@ -17,6 +17,7 @@
     "test:api": "npm run test -w @contract-spirit/api",
     "test:web": "npm run test -w @contract-spirit/web",
     "smoke": "bash scripts/smoke.sh",
-    "backup:db": "bash scripts/backup-sqlite.sh"
+    "backup:db": "bash scripts/backup-sqlite.sh",
+    "deploy:staging": "bash scripts/deploy-staging.sh"
   }
 }
