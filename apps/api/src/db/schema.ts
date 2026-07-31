@@ -1,6 +1,7 @@
 import { DatabaseSync } from "node:sqlite"
 import path from "node:path"
 import fs from "node:fs"
+import { ensureMetaTable, getSchemaVersion, setSchemaVersion, SCHEMA_VERSION } from "./meta.js"
 
 function resolveDbPath(): string {
   if (process.env.DB_PATH === ":memory:") return ":memory:"
@@ -28,6 +29,8 @@ export function getDb(): DatabaseSync {
       db.exec("PRAGMA journal_mode=WAL")
     }
     db.exec("PRAGMA foreign_keys=ON")
+    db.exec("PRAGMA busy_timeout=5000")
+    db.exec("PRAGMA synchronous=NORMAL")
     initSchema()
   }
   return db
@@ -175,9 +178,19 @@ function initSchema() {
   `)
 
   migrateSchema()
+  applyIndexesAndVersion()
+}
+
+function applyIndexesAndVersion() {
+  const version = getSchemaVersion(db!)
+  if (version >= SCHEMA_VERSION) return
+
+  ensureIndexes()
+  setSchemaVersion(db!, SCHEMA_VERSION)
 }
 
 function migrateSchema() {
+  ensureMetaTable(db!)
   const userCols = db!.prepare("PRAGMA table_info(users)").all() as { name: string }[]
   const names = new Set(userCols.map((c) => c.name))
 
@@ -212,16 +225,19 @@ function migrateSchema() {
   }
 
   migrateLegacyDomainTables()
-  ensureIndexes()
 }
 
 function ensureIndexes() {
   db!.exec(`
     CREATE INDEX IF NOT EXISTS idx_self_commitments_owner ON self_commitments(owner_user_id);
+    CREATE INDEX IF NOT EXISTS idx_self_commitments_owner_status ON self_commitments(owner_user_id, status);
     CREATE INDEX IF NOT EXISTS idx_supervise_parties_user ON supervise_parties(user_id);
     CREATE INDEX IF NOT EXISTS idx_supervise_parties_agreement ON supervise_parties(agreement_id);
     CREATE INDEX IF NOT EXISTS idx_supervise_witnesses_commitment ON supervise_witnesses(commitment_id);
     CREATE INDEX IF NOT EXISTS idx_supervise_witnesses_user ON supervise_witnesses(witness_user_id);
+    CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON notifications(user_id, read);
+    CREATE INDEX IF NOT EXISTS idx_feedback_created ON feedback(created_at);
+    CREATE INDEX IF NOT EXISTS idx_analytics_events_event ON analytics_events(event, created_at);
   `)
 }
 

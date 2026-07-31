@@ -41,8 +41,34 @@ Authorization: Bearer <jwt>
 ### `GET /api/health`
 
 ```json
-{ "status": "ok", "timestamp": "..." }
+{
+  "status": "ok",
+  "timestamp": "...",
+  "version": "initial-fast-launch",
+  "db": {
+    "ok": true,
+    "integrity": "ok",
+    "schemaVersion": 2,
+    "expectedSchemaVersion": 2,
+    "journalMode": "wal"
+  }
+}
 ```
+
+`db.ok` 为 false 时 HTTP 503、`status: "degraded"`。
+
+---
+
+## 数据库运维 `/api/db`（值班）
+
+Header：`X-Feedback-Admin-Key` 或 `X-DB-Admin-Key`（同 `FEEDBACK_ADMIN_KEY` / `DB_ADMIN_KEY`）。
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/db/health` | 完整性 + schema 版本详情 |
+| GET | `/api/db/stats` | 各表行数 |
+
+详见 [database.md](./database.md)。
 
 ---
 

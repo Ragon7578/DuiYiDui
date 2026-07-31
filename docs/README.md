@@ -60,6 +60,7 @@ contract-spirit/
 | [api.md](api.md) | **REST API** — 端点、鉴权、错误码 |
 | [backend.md](backend.md) | **后端说明** — Express 模块、安全、Java 规划 |
 | [data-model.md](data-model.md) | **数据模型** — 表结构、信任分规则 |
+| [database.md](database.md) | **数据库运维** — 备份、迁移、健康检查 |
 | [versions/README.md](versions/README.md) | **初版 / 终极版** — 范围拆分 |
 | [roadmap/feedback/](roadmap/feedback/) | **上线反馈运营** — 征集、digest、给总负责人的任务简报 |
 | [roadmap/agents/](roadmap/agents/) | **Agent 任务板 + [STATUS](roadmap/agents/STATUS.md)** — 总负责人分派与监督 |

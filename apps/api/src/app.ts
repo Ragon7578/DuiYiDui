@@ -9,7 +9,9 @@ import notificationsRouter from "./routes/notifications.js"
 import aiRouter from "./routes/ai.js"
 import feedbackRouter from "./routes/feedback.js"
 import eventsRouter from "./routes/events.js"
+import dbRouter from "./routes/db.js"
 import { getDb } from "./db/schema.js"
+import { checkDbHealth } from "./db/maintenance.js"
 
 /** 创建 Express 应用（不监听端口，便于集成测试） */
 export function createApp() {
@@ -21,10 +23,19 @@ export function createApp() {
   app.use(express.json({ limit: "64kb" }))
 
   app.get("/api/health", (_req, res) => {
-    res.json({
-      status: "ok",
+    const dbHealth = checkDbHealth()
+    const ok = dbHealth.ok
+    res.status(ok ? 200 : 503).json({
+      status: ok ? "ok" : "degraded",
       timestamp: new Date().toISOString(),
       version: "initial-fast-launch",
+      db: {
+        ok: dbHealth.ok,
+        integrity: dbHealth.integrity,
+        schemaVersion: dbHealth.schemaVersion,
+        expectedSchemaVersion: dbHealth.expectedSchemaVersion,
+        journalMode: dbHealth.journalMode,
+      },
     })
   })
 
@@ -37,6 +48,7 @@ export function createApp() {
   app.use("/api/ai", aiRouter)
   app.use("/api/feedback", feedbackRouter)
   app.use("/api/events", eventsRouter)
+  app.use("/api/db", dbRouter)
 
   app.use((_req, res) => {
     res.status(404).json({ error: "Not found" })

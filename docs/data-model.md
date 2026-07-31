@@ -87,9 +87,31 @@ API 过渡：HTTP 仍为 `/api/goals`、`/api/contracts`；物理表已用上表
 
 启动时若仍存在旧表 `goals` / `contracts` / `parties` / `clauses` / `goal_witnesses`，会一次性迁入新表后 **DROP** 旧表（见 `apps/api/src/db/schema.ts`）。
 
+### feedback
+
+| 列 | 说明 |
+|----|------|
+| `id` / `user_id` | 可匿名（`user_id` 可空） |
+| `contact` / `message` | |
+| `created_at` | |
+
+### analytics_events
+
+| 列 | 说明 |
+|----|------|
+| `id` / `user_id` | 埋点事件 |
+| `event` / `payload` | JSON 字符串 |
+| `created_at` | |
+
+### schema_meta
+
+| 列 | 说明 |
+|----|------|
+| `key` / `value` | 如 `schema_version` → 当前逻辑版本号 |
+
 ---
 
-## 四、信任分 / 成就点
+## 四、信任分 / 成就点规则（与实现一致）
 
 ```
 默认 50，范围约 0–100

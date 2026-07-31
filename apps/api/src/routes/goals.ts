@@ -55,8 +55,6 @@ router.post("/", requireAuth, (req, res) => {
         // 创建时邀请失败不阻断承诺创建
       }
     }
-  } else if (input.witnessName && String(input.witnessName).trim()) {
-    addWitness(id, null, String(input.witnessName).trim(), userId)
   }
 
   const row = getCommitmentForOwner(id, userId)!
