@@ -38,7 +38,7 @@
 ## 总负责人即时裁定（2026-07-31 晚）
 
 1. **01 / 08 完成**；schema v3（trust_ledger + 审计列）已进本地 `main`（`0a6b6c7` + `2574385`）  
-2. **推送阻塞：** 本环境连不上 `github.com:443`；本地 `main` **ahead 3**，需网络恢复后 `git push origin main`  
-3. **任务 02：** 本机无 Docker；已用本地 API 跑通 `npm run smoke`（OK）。Compose 部署待装 Docker 或上云主机  
+2. **已推送 `main` → `e2f9915`**  
+3. **任务 02：** 本机无 Docker；本地 `npm run smoke` 已通过。Compose 待装 Docker 或上云主机  
 4. **任务 03** 仍依赖用户域名/主机账号  
-5. 清理已吸收远程分支延后到 push 成功后执行
+5. 已吸收远程枝：尝试删除 `f2-ux-polish` / `database` / `fast-launch-ops`  
