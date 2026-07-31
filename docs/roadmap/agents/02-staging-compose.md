@@ -13,11 +13,13 @@
 ## Must
 
 - [ ] `cp .env.example .env`，填写 `JWT_SECRET`（强随机）
-- [ ] `npm run deploy:staging` 或 `docker compose up -d --build`
-- [ ] `GET /api/health` 正常；浏览器打开 Web
+- [ ] `npm run deploy:staging` 或 `docker compose up -d --build`（**本机无 Docker，阻塞**）
+- [x] `GET /api/health` 正常（本地 :4000）；浏览器 Web 待 Compose
 - [ ] 可选：`REGISTRATION_INVITE_CODE` 测邀请注册
 - [ ] 更新 [Sprint 02](../iterations/sprint-02.md) 本机/Staging 可勾项
 - [ ] 周报 `progress/` 一条记录
+
+> **2026-07-31：** 本地 `npm run smoke` 已通过；Docker Compose 待环境。
 
 ## Should
 
