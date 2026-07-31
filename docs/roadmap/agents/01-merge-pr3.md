@@ -14,9 +14,9 @@
 ## Must
 
 - [x] Review PR #3 diff（F2 UX + 邀请码 + 部署脚本 + 文档）
-- [ ] CI/本地：`npm run build`、`npm run smoke`（API 本地起）
-- [x] 合并 PR；删分支 `cursor/f2-ux-polish-c614`（可选）
-- [ ] 确认 `main` 上 `docs/roadmap/fast-launch.md` F2 为已勾选
+- [x] CI/本地：`npm run build`、`npm test`（smoke 待 API 起后补）
+- [x] 合并进 `main`（`23df53b`）；远程枝可删
+- [x] 确认 `main` 上 `docs/roadmap/fast-launch.md` F2 为已勾选
 
 ## 不做
 

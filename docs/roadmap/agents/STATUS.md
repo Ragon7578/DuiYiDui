@@ -1,31 +1,31 @@
 # 兑一兑 · Agent 态势板（STATUS）
 
 > **维护人：** 总负责人（Cursor `dui-yi-dui`）  
-> **更新：** 2026-07-28  
+> **更新：** 2026-07-31  
 > **用途：** 推进 / 监督 / 掌握全仓 Agent 更新的唯一快照。任务说明见同目录各 `NN-*.md`。
 
 ## 总览
 
 | 优先级 | 项 | 状态 | 负责人 / 分支 | 下一步 |
 |--------|----|------|---------------|--------|
-| **P0** | 合入 F2/F3 基线（原 PR #3） | 远端已推，**未进 main** | `cursor/f2-ux-polish-c614` | 总负责人审查并合并（任务 01） |
-| **P0** | Self/Supervise + 测试 + 总负责人约定 | 已推，**未进 main** | `cursor/docs-engineering-and-intro` @ `43ecfcb` | 与 #3 / DB 分支协调合并顺序 |
-| **P1** | 数据库专项 | 远端已推，**未进 main**；依赖建议先合 F2 基线 | `cursor/database-c614` @ `b303be9` | 任务 08；合完 01 后再合 |
-| **P1** | Staging Compose | 未开工 | 任务 02 | 等 01 |
-| **P1** | 公网 HTTPS | 未开工（需账号） | 任务 03 | 等 02；需用户提供域名/证书账号 |
-| **P2** | F3 开放收反馈 | 未开工 | 任务 04 | 等 03 |
-| **P2** | 反馈迭代 | 流程就绪，公网未开 | `feedback-ops` + 任务 05 | 上线后每周五 digest |
+| ~~P0~~ | 合入 F2/F3 基线（原 PR #3） | **已合入 main**（`23df53b`） | 原 `cursor/f2-ux-polish-c614` | 可删远程分支 |
+| ~~P0~~ | Self/Supervise + 测试 + 总负责人约定 | **已在 main** | 原 `docs-engineering-and-intro` | — |
+| ~~P1~~ | 数据库专项 | **已合入 main**（`172873d`） | 原 `cursor/database-c614` | 可删远程分支 |
+| **P0** | Staging Compose | **下一优先** | 任务 02 | 本机/`deploy:staging` 跑通 |
+| **P0** | 公网 HTTPS | 未开工（需账号） | 任务 03 | 等 02；需用户域名/主机 |
+| **P1** | F3 开放收反馈 | 未开工 | 任务 04 | 等 03 |
+| **P1** | 反馈迭代 | 流程就绪，公网未开 | `feedback-ops` + 任务 05 | 上线后每周五 digest |
 | 后置 | 真邮件 / 移动端 | 未开工 | 任务 06 / 07 | 不挡反馈 |
 
 ## 远端分支台账
 
-| 分支 | 最新 | 相对 `main` | 处置 |
-|------|------|-------------|------|
-| `main` | `5372ae9` | — | 基线（仅含至 Sprint 01 / PR #2） |
-| `cursor/f2-ux-polish-c614` | `695cc7d` | 超前（F2+F3 准备+Agent 任务板） | **待合并（01）**；合并后可删 |
-| `cursor/docs-engineering-and-intro` | `43ecfcb` | 超前（角色服务拆分/Vitest/总负责人） | 待与 01 协调合并 |
-| `cursor/database-c614` | `b303be9` | 超前（含 f2 历史 + DB） | 待 01 后审查合并（08） |
-| `cursor/fast-launch-ops-c614` | `b93b920` | 旧；内容多已进 #2 / 被 f2 覆盖 | **勿再推**；可删远程 |
+| 分支 | 最新（合入前） | 相对 `main` | 处置 |
+|------|----------------|-------------|------|
+| `main` | 含 F2/F3 + DB + Self/Supervise | — | **当前基线** |
+| `cursor/f2-ux-polish-c614` | `695cc7d` | 已吸收 | **可删远程** |
+| `cursor/docs-engineering-and-intro` | 与历史 main 对齐过 | 已吸收 | 可删或保留作工作枝 |
+| `cursor/database-c614` | `b303be9` | 已吸收 | **可删远程** |
+| `cursor/fast-launch-ops-c614` | `b93b920` | 旧 | **勿再推**；可删远程 |
 
 ## 本地 Cursor Agent
 
@@ -45,12 +45,11 @@
 
 | 项 | 说明 |
 |----|------|
-| 多分支未合 `main` | docs / F2 / DB / 角色重构分叉，拖延会放大冲突 |
-| GitHub PR API | 本环境 `gh` GraphQL 曾 Forbidden；合并可用网页或修好鉴权后 `gh pr` |
 | 公网上线 | 任务 03 强依赖用户域名与主机账号 |
+| GitHub `gh` API | 本环境曾 Forbidden；合并已用本地 git 完成 |
 
-## 总负责人即时裁定（2026-07-28）
+## 总负责人即时裁定（2026-07-31）
 
-1. **合并顺序：** `f2-ux-polish`（01）→ 再吸收 `docs-engineering-and-intro` → 再 `database-c614`（08）  
-2. **停用：** 不再使用旧 Cloud「项目进展」Agent；`fast-launch-ops-c614` 只读  
-3. **明日优先：** 执行任务 01（审查并合 F2/F3 基线进 `main`）
+1. **任务 01 / 08 完成：** F2/F3 + 数据库已进 `main`；`npm run build` / `npm test` 通过  
+2. **下一优先：** 任务 02 Staging Compose；完成后推进 03（需用户账号）  
+3. **停用分支清理：** 推送 `main` 后可删 `f2-ux-polish` / `database` / `fast-launch-ops` 远程枝
