@@ -84,7 +84,9 @@ router.post("/", requireAuth, requireSuperviseUnlocked, (req, res) => {
     insertClause.run(uuid(), agreementId, c.content, c.dueDate || null)
   }
 
-  const bumpTotal = db.prepare("UPDATE users SET total_contracts = total_contracts + 1 WHERE id = ?")
+  const bumpTotal = db.prepare(
+    "UPDATE users SET total_contracts = total_contracts + 1, updated_at = datetime('now') WHERE id = ?"
+  )
   bumpTotal.run(req.user!.userId)
   for (const p of resolved) bumpTotal.run(p.userId)
 
@@ -164,10 +166,9 @@ router.patch("/:id/clauses/:clauseId", requireAuth, (req, res) => {
     return
   }
 
-  db.prepare("UPDATE supervise_clauses SET status = ? WHERE id = ?").run(
-    status,
-    param(req.params.clauseId)
-  )
+  db.prepare(
+    "UPDATE supervise_clauses SET status = ?, updated_at = datetime('now') WHERE id = ?"
+  ).run(status, param(req.params.clauseId))
   db.prepare("UPDATE supervise_agreements SET updated_at = datetime('now') WHERE id = ?").run(
     param(req.params.id)
   )

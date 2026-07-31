@@ -14,6 +14,7 @@ db.exec("DELETE FROM self_commitments")
 db.exec("DELETE FROM pledges")
 db.exec("DELETE FROM feedback")
 db.exec("DELETE FROM analytics_events")
+db.exec("DELETE FROM trust_ledger")
 db.exec("DELETE FROM users")
 
 const insertUser = db.prepare(`

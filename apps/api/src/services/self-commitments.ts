@@ -1,4 +1,5 @@
 import { getDb } from "../db/schema.js"
+import { adjustTrustScore } from "../db/trust.js"
 import { type SelfCommitmentRow, type WitnessRow, toGoal, toWitness } from "../db/mappers.js"
 import type { Goal, GoalWitness } from "../types.js"
 import { createNotification } from "./notifications.js"
@@ -71,12 +72,11 @@ export function notifyConfirmedWitnesses(commitmentId: string, title: string): v
     )
     .all(commitmentId) as { witness_user_id: string }[]
 
-  const bumpTrust = db.prepare(
-    "UPDATE users SET trust_score = MIN(100, trust_score + 3) WHERE id = ?"
-  )
-
   for (const w of witnesses) {
-    bumpTrust.run(w.witness_user_id)
+    adjustTrustScore(w.witness_user_id, 3, "witness_goal_achieved", {
+      type: "goal",
+      id: commitmentId,
+    })
     createNotification(
       w.witness_user_id,
       "goal_achieved",

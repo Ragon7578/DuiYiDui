@@ -19,9 +19,10 @@
 
 ## 二、Schema 版本
 
-- 当前逻辑版本：**2**（`apps/api/src/db/meta.ts` 中 `SCHEMA_VERSION`）
+- 当前逻辑版本：**3**（`apps/api/src/db/meta.ts` 中 `SCHEMA_VERSION`）
 - 启动后写入 `schema_meta.schema_version`
 - 健康检查：`GET /api/health` 含 `db.schemaVersion` / `expectedSchemaVersion`
+- v3 要点：审计时间戳、`trust_ledger`、Self/Supervise 审计列、见证人部分唯一约束、反馈 `status`（与 main 域模型对齐）
 
 ---
 

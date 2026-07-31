@@ -67,13 +67,16 @@ router.get(
     const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 200)
     const since = typeof req.query.since === "string" ? req.query.since.trim() : ""
 
+    const selectCols = `SELECT f.id, f.user_id AS userId, f.contact, f.message, f.status,
+            f.created_at AS createdAt, f.reviewed_at AS reviewedAt,
+            u.name AS userName
+     FROM feedback f
+     LEFT JOIN users u ON u.id = f.user_id`
+
     const rows = since
       ? (db
           .prepare(
-            `SELECT f.id, f.user_id AS userId, f.contact, f.message, f.created_at AS createdAt,
-                    u.name AS userName
-             FROM feedback f
-             LEFT JOIN users u ON u.id = f.user_id
+            `${selectCols}
              WHERE f.created_at >= ?
              ORDER BY f.created_at DESC
              LIMIT ?`
@@ -81,10 +84,7 @@ router.get(
           .all(since, limit) as Record<string, unknown>[])
       : (db
           .prepare(
-            `SELECT f.id, f.user_id AS userId, f.contact, f.message, f.created_at AS createdAt,
-                    u.name AS userName
-             FROM feedback f
-             LEFT JOIN users u ON u.id = f.user_id
+            `${selectCols}
              ORDER BY f.created_at DESC
              LIMIT ?`
           )

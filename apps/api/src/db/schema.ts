@@ -51,22 +51,33 @@ function tableExists(name: string): boolean {
   return Boolean(row)
 }
 
+function hasColumn(table: string, column: string): boolean {
+  const cols = db!.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]
+  return cols.some((c) => c.name === column)
+}
+
 function initSchema() {
   db!.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       email TEXT UNIQUE,
+      phone TEXT,
       password_hash TEXT,
+      password_reset_token TEXT,
+      password_reset_expires TEXT,
       avatar TEXT,
-      trust_score INTEGER NOT NULL DEFAULT 50,
+      trust_score INTEGER NOT NULL DEFAULT 50 CHECK(trust_score >= 0 AND trust_score <= 100),
       total_goals INTEGER NOT NULL DEFAULT 0,
       achieved_goals INTEGER NOT NULL DEFAULT 0,
       abandoned_goals INTEGER NOT NULL DEFAULT 0,
       total_contracts INTEGER NOT NULL DEFAULT 0,
       fulfilled_contracts INTEGER NOT NULL DEFAULT 0,
       breached_contracts INTEGER NOT NULL DEFAULT 0,
-      bio TEXT NOT NULL DEFAULT ''
+      bio TEXT NOT NULL DEFAULT '',
+      supervise_unlocked_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
     -- Self 域：对自己的承诺 + 奖励兑现
@@ -76,13 +87,16 @@ function initSchema() {
       title TEXT NOT NULL,
       description TEXT,
       reward TEXT NOT NULL,
-      reward_claimed INTEGER NOT NULL DEFAULT 0,
+      reward_claimed INTEGER NOT NULL DEFAULT 0 CHECK(reward_claimed IN (0, 1)),
       deadline TEXT,
       status TEXT NOT NULL DEFAULT 'active'
         CHECK(status IN ('active','achieved','reward_claimed','abandoned')),
       progress INTEGER NOT NULL DEFAULT 0 CHECK(progress >= 0 AND progress <= 100),
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
       achieved_at TEXT,
+      reward_claimed_at TEXT,
+      abandoned_at TEXT,
       FOREIGN KEY (owner_user_id) REFERENCES users(id)
     );
 
@@ -119,6 +133,7 @@ function initSchema() {
       status TEXT NOT NULL DEFAULT 'pending'
         CHECK(status IN ('pending','fulfilled','breached')),
       due_date TEXT,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
       FOREIGN KEY (agreement_id) REFERENCES supervise_agreements(id) ON DELETE CASCADE
     );
 
@@ -143,6 +158,7 @@ function initSchema() {
       deadline TEXT,
       status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','fulfilled','broken')),
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
       user_id TEXT,
       FOREIGN KEY (user_id) REFERENCES users(id)
     );
@@ -154,7 +170,7 @@ function initSchema() {
       title TEXT NOT NULL,
       message TEXT NOT NULL,
       related_id TEXT,
-      read INTEGER NOT NULL DEFAULT 0,
+      read INTEGER NOT NULL DEFAULT 0 CHECK(read IN (0, 1)),
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
@@ -164,7 +180,9 @@ function initSchema() {
       user_id TEXT,
       contact TEXT,
       message TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'new' CHECK(status IN ('new','reviewed','archived')),
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      reviewed_at TEXT,
       FOREIGN KEY (user_id) REFERENCES users(id)
     );
 
@@ -175,10 +193,149 @@ function initSchema() {
       payload TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS trust_ledger (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      delta INTEGER NOT NULL,
+      balance_after INTEGER NOT NULL CHECK(balance_after >= 0 AND balance_after <= 100),
+      reason TEXT NOT NULL,
+      related_type TEXT,
+      related_id TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
   `)
 
   migrateSchema()
   applyIndexesAndVersion()
+}
+
+function migrateSchema() {
+  ensureMetaTable(db!)
+
+  // —— users ——
+  if (!hasColumn("users", "email")) db!.exec("ALTER TABLE users ADD COLUMN email TEXT")
+  if (!hasColumn("users", "password_hash")) db!.exec("ALTER TABLE users ADD COLUMN password_hash TEXT")
+  if (!hasColumn("users", "phone")) db!.exec("ALTER TABLE users ADD COLUMN phone TEXT")
+  if (!hasColumn("users", "password_reset_token")) {
+    db!.exec("ALTER TABLE users ADD COLUMN password_reset_token TEXT")
+  }
+  if (!hasColumn("users", "password_reset_expires")) {
+    db!.exec("ALTER TABLE users ADD COLUMN password_reset_expires TEXT")
+  }
+  if (!hasColumn("users", "created_at")) {
+    db!.exec("ALTER TABLE users ADD COLUMN created_at TEXT NOT NULL DEFAULT (datetime('now'))")
+  }
+  if (!hasColumn("users", "updated_at")) {
+    db!.exec("ALTER TABLE users ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime('now'))")
+  }
+  if (!hasColumn("users", "supervise_unlocked_at")) {
+    db!.exec("ALTER TABLE users ADD COLUMN supervise_unlocked_at TEXT")
+    const required = Number(process.env.SUPERVISE_UNLOCK_REQUIRED || "3")
+    db!.prepare(
+      `UPDATE users SET supervise_unlocked_at = datetime('now')
+       WHERE supervise_unlocked_at IS NULL
+         AND (total_contracts > 0 OR achieved_goals >= ?)`
+    ).run(required)
+  }
+
+  // —— self_commitments（v3 审计列）——
+  if (tableExists("self_commitments")) {
+    if (!hasColumn("self_commitments", "updated_at")) {
+      db!.exec(
+        "ALTER TABLE self_commitments ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime('now'))"
+      )
+    }
+    if (!hasColumn("self_commitments", "reward_claimed_at")) {
+      db!.exec("ALTER TABLE self_commitments ADD COLUMN reward_claimed_at TEXT")
+    }
+    if (!hasColumn("self_commitments", "abandoned_at")) {
+      db!.exec("ALTER TABLE self_commitments ADD COLUMN abandoned_at TEXT")
+    }
+  }
+
+  // —— supervise_clauses ——
+  if (tableExists("supervise_clauses") && !hasColumn("supervise_clauses", "updated_at")) {
+    db!.exec(
+      "ALTER TABLE supervise_clauses ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime('now'))"
+    )
+  }
+
+  // —— pledges ——
+  if (!hasColumn("pledges", "user_id")) {
+    db!.exec("ALTER TABLE pledges ADD COLUMN user_id TEXT")
+  }
+  if (!hasColumn("pledges", "updated_at")) {
+    db!.exec("ALTER TABLE pledges ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime('now'))")
+  }
+
+  // —— feedback ——
+  if (!hasColumn("feedback", "status")) {
+    db!.exec("ALTER TABLE feedback ADD COLUMN status TEXT NOT NULL DEFAULT 'new'")
+  }
+  if (!hasColumn("feedback", "reviewed_at")) {
+    db!.exec("ALTER TABLE feedback ADD COLUMN reviewed_at TEXT")
+  }
+
+  // —— trust_ledger（CREATE IF NOT EXISTS 已覆盖新库；旧库无表时补建）——
+  db!.exec(`
+    CREATE TABLE IF NOT EXISTS trust_ledger (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      delta INTEGER NOT NULL,
+      balance_after INTEGER NOT NULL CHECK(balance_after >= 0 AND balance_after <= 100),
+      reason TEXT NOT NULL,
+      related_type TEXT,
+      related_id TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+  `)
+
+  // 旧库仍可能残留 goals/contracts：补审计列后再迁入 Self/Supervise
+  if (tableExists("goals")) {
+    if (!hasColumn("goals", "updated_at")) {
+      db!.exec("ALTER TABLE goals ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime('now'))")
+    }
+    if (!hasColumn("goals", "reward_claimed_at")) {
+      db!.exec("ALTER TABLE goals ADD COLUMN reward_claimed_at TEXT")
+    }
+    if (!hasColumn("goals", "abandoned_at")) {
+      db!.exec("ALTER TABLE goals ADD COLUMN abandoned_at TEXT")
+    }
+  }
+  if (tableExists("contracts") && !hasColumn("contracts", "owner_user_id")) {
+    db!.exec("ALTER TABLE contracts ADD COLUMN owner_user_id TEXT")
+  }
+  if (tableExists("parties") && !hasColumn("parties", "user_id")) {
+    db!.exec("ALTER TABLE parties ADD COLUMN user_id TEXT")
+  }
+  if (tableExists("clauses") && !hasColumn("clauses", "updated_at")) {
+    db!.exec("ALTER TABLE clauses ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime('now'))")
+  }
+
+  if (tableExists("contracts")) {
+    db!.exec(`
+      UPDATE contracts
+      SET owner_user_id = (
+        SELECT p.id FROM parties p
+        WHERE p.contract_id = contracts.id AND p.role = 'promisor'
+        LIMIT 1
+      )
+      WHERE owner_user_id IS NULL
+    `)
+  }
+  if (tableExists("parties")) {
+    db!.exec(`
+      UPDATE parties
+      SET user_id = id
+      WHERE user_id IS NULL
+        AND EXISTS (SELECT 1 FROM users u WHERE u.id = parties.id)
+    `)
+  }
+
+  migrateLegacyDomainTables()
 }
 
 function applyIndexesAndVersion() {
@@ -189,55 +346,34 @@ function applyIndexesAndVersion() {
   setSchemaVersion(db!, SCHEMA_VERSION)
 }
 
-function migrateSchema() {
-  ensureMetaTable(db!)
-  const userCols = db!.prepare("PRAGMA table_info(users)").all() as { name: string }[]
-  const names = new Set(userCols.map((c) => c.name))
-
-  if (!names.has("email")) {
-    db!.exec("ALTER TABLE users ADD COLUMN email TEXT")
-  }
-  if (!names.has("password_hash")) {
-    db!.exec("ALTER TABLE users ADD COLUMN password_hash TEXT")
-  }
-  if (!names.has("phone")) {
-    db!.exec("ALTER TABLE users ADD COLUMN phone TEXT")
-  }
-  if (!names.has("password_reset_token")) {
-    db!.exec("ALTER TABLE users ADD COLUMN password_reset_token TEXT")
-  }
-  if (!names.has("password_reset_expires")) {
-    db!.exec("ALTER TABLE users ADD COLUMN password_reset_expires TEXT")
-  }
-  if (!names.has("supervise_unlocked_at")) {
-    db!.exec("ALTER TABLE users ADD COLUMN supervise_unlocked_at TEXT")
-    const required = Number(process.env.SUPERVISE_UNLOCK_REQUIRED || "3")
-    db!.prepare(
-      `UPDATE users SET supervise_unlocked_at = datetime('now')
-       WHERE supervise_unlocked_at IS NULL
-         AND (total_contracts > 0 OR achieved_goals >= ?)`
-    ).run(required)
-  }
-
-  const pledgeCols = db!.prepare("PRAGMA table_info(pledges)").all() as { name: string }[]
-  if (!pledgeCols.some((c) => c.name === "user_id")) {
-    db!.exec("ALTER TABLE pledges ADD COLUMN user_id TEXT")
-  }
-
-  migrateLegacyDomainTables()
-}
-
 function ensureIndexes() {
   db!.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_users_name ON users(name);
+    CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+    CREATE INDEX IF NOT EXISTS idx_users_reset_token ON users(password_reset_token);
+
     CREATE INDEX IF NOT EXISTS idx_self_commitments_owner ON self_commitments(owner_user_id);
     CREATE INDEX IF NOT EXISTS idx_self_commitments_owner_status ON self_commitments(owner_user_id, status);
+    CREATE INDEX IF NOT EXISTS idx_self_commitments_deadline ON self_commitments(deadline);
+
+    CREATE INDEX IF NOT EXISTS idx_supervise_agreements_created_by ON supervise_agreements(created_by_user_id);
+    CREATE INDEX IF NOT EXISTS idx_supervise_agreements_status ON supervise_agreements(status);
     CREATE INDEX IF NOT EXISTS idx_supervise_parties_user ON supervise_parties(user_id);
     CREATE INDEX IF NOT EXISTS idx_supervise_parties_agreement ON supervise_parties(agreement_id);
+    CREATE INDEX IF NOT EXISTS idx_supervise_clauses_agreement ON supervise_clauses(agreement_id);
+
     CREATE INDEX IF NOT EXISTS idx_supervise_witnesses_commitment ON supervise_witnesses(commitment_id);
     CREATE INDEX IF NOT EXISTS idx_supervise_witnesses_user ON supervise_witnesses(witness_user_id);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_commitment_one_active_witness
+      ON supervise_witnesses(commitment_id) WHERE status IN ('pending', 'confirmed');
+
     CREATE INDEX IF NOT EXISTS idx_notifications_user_read ON notifications(user_id, read);
     CREATE INDEX IF NOT EXISTS idx_feedback_created ON feedback(created_at);
+    CREATE INDEX IF NOT EXISTS idx_feedback_status ON feedback(status);
     CREATE INDEX IF NOT EXISTS idx_analytics_events_event ON analytics_events(event, created_at);
+
+    CREATE INDEX IF NOT EXISTS idx_trust_ledger_user ON trust_ledger(user_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_pledges_user ON pledges(user_id);
   `)
 }
 
@@ -258,11 +394,14 @@ function migrateLegacyDomainTables() {
     db!.exec(`
       INSERT INTO self_commitments (
         id, owner_user_id, title, description, reward, reward_claimed,
-        deadline, status, progress, created_at, achieved_at
+        deadline, status, progress, created_at, updated_at, achieved_at,
+        reward_claimed_at, abandoned_at
       )
       SELECT
         id, user_id, title, description, reward, reward_claimed,
-        deadline, status, progress, created_at, achieved_at
+        deadline, status, progress, created_at,
+        COALESCE(updated_at, created_at), achieved_at,
+        reward_claimed_at, abandoned_at
       FROM goals
     `)
     console.log("[db] migrated goals → self_commitments")
@@ -281,8 +420,9 @@ function migrateLegacyDomainTables() {
         SELECT
           c.id,
           COALESCE(
-            (SELECT p.id FROM parties p
-             WHERE p.contract_id = c.id AND p.id IN (SELECT id FROM users)
+            c.owner_user_id,
+            (SELECT COALESCE(p.user_id, p.id) FROM parties p
+             WHERE p.contract_id = c.id AND COALESCE(p.user_id, p.id) IN (SELECT id FROM users)
              ORDER BY CASE p.role WHEN 'promisor' THEN 0 ELSE 1 END
              LIMIT 1),
             (SELECT id FROM users LIMIT 1)
@@ -297,16 +437,17 @@ function migrateLegacyDomainTables() {
           INSERT OR IGNORE INTO supervise_parties (
             agreement_id, user_id, display_name, role, signed_at
           )
-          SELECT p.contract_id, p.id, p.name, p.role, p.signed_at
+          SELECT p.contract_id, COALESCE(p.user_id, p.id), p.name, p.role, p.signed_at
           FROM parties p
-          WHERE p.id IN (SELECT id FROM users)
+          WHERE COALESCE(p.user_id, p.id) IN (SELECT id FROM users)
         `)
       }
 
       if (tableExists("clauses")) {
         db!.exec(`
-          INSERT INTO supervise_clauses (id, agreement_id, content, status, due_date)
-          SELECT id, contract_id, content, status, due_date FROM clauses
+          INSERT INTO supervise_clauses (id, agreement_id, content, status, due_date, updated_at)
+          SELECT id, contract_id, content, status, due_date, COALESCE(updated_at, datetime('now'))
+          FROM clauses
         `)
       }
       console.log("[db] migrated contracts → supervise_agreements")

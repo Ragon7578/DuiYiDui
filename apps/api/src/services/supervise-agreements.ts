@@ -1,4 +1,5 @@
 import { getDb } from "../db/schema.js"
+import { adjustTrustScore } from "../db/trust.js"
 import {
   type AgreementRow,
   type ClauseRow,
@@ -58,17 +59,19 @@ export function bumpPartyTrust(agreementId: string, kind: "fulfilled" | "breache
     .prepare("SELECT user_id FROM supervise_parties WHERE agreement_id = ?")
     .all(agreementId) as { user_id: string }[]
 
-  const fulfilledSql = `
-    UPDATE users SET fulfilled_contracts = fulfilled_contracts + 1,
-      trust_score = MIN(100, trust_score + 10) WHERE id = ?
-  `
-  const breachedSql = `
-    UPDATE users SET breached_contracts = breached_contracts + 1,
-      trust_score = MAX(0, trust_score - 15) WHERE id = ?
-  `
-  const stmt = db.prepare(kind === "fulfilled" ? fulfilledSql : breachedSql)
+  const countSql =
+    kind === "fulfilled"
+      ? `UPDATE users SET fulfilled_contracts = fulfilled_contracts + 1,
+           updated_at = datetime('now') WHERE id = ?`
+      : `UPDATE users SET breached_contracts = breached_contracts + 1,
+           updated_at = datetime('now') WHERE id = ?`
+  const bump = db.prepare(countSql)
+  const delta = kind === "fulfilled" ? 10 : -15
+  const reason = kind === "fulfilled" ? "contract_fulfilled" : "contract_breached"
+
   for (const { user_id } of parties) {
-    stmt.run(user_id)
+    bump.run(user_id)
+    adjustTrustScore(user_id, delta, reason, { type: "contract", id: agreementId })
   }
 }
 

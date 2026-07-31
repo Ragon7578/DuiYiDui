@@ -1,6 +1,7 @@
 import { Router } from "express"
 import { getDb } from "../db/schema.js"
 import { toGoal } from "../db/mappers.js"
+import { adjustTrustScore } from "../db/trust.js"
 import { v4 as uuid } from "uuid"
 import { requireAuth } from "../middleware/auth.js"
 import { param } from "../utils/params.js"
@@ -45,7 +46,9 @@ router.post("/", requireAuth, (req, res) => {
     `INSERT INTO self_commitments (id, title, description, reward, deadline, status, progress, owner_user_id)
      VALUES (?, ?, ?, ?, ?, 'active', 0, ?)`
   ).run(id, input.title, input.description || null, input.reward, input.deadline || null, userId)
-  db.prepare("UPDATE users SET total_goals = total_goals + 1 WHERE id = ?").run(userId)
+  db.prepare(
+    "UPDATE users SET total_goals = total_goals + 1, updated_at = datetime('now') WHERE id = ?"
+  ).run(userId)
 
   if (input.witnessUserId) {
     const witness = getUserById(input.witnessUserId)
@@ -69,7 +72,7 @@ router.patch("/:id", requireAuth, (req, res) => {
   }
 
   const input = req.body as UpdateGoalInput
-  const sets: string[] = []
+  const sets: string[] = ["updated_at = datetime('now')"]
   const params: (string | number | null)[] = []
 
   if (input.title !== undefined) {
@@ -99,6 +102,9 @@ router.patch("/:id", requireAuth, (req, res) => {
   if (input.rewardClaimed !== undefined) {
     sets.push("reward_claimed = ?")
     params.push(input.rewardClaimed ? 1 : 0)
+    if (input.rewardClaimed) {
+      sets.push("reward_claimed_at = datetime('now')")
+    }
   }
 
   if (input.status === "achieved" && existing.status !== "achieved") {
@@ -108,10 +114,8 @@ router.patch("/:id", requireAuth, (req, res) => {
     sets.push("status = 'achieved'")
     sets.push("achieved_at = datetime('now')")
   }
-
-  if (sets.length === 0) {
-    res.json(toGoal(existing))
-    return
+  if (input.status === "abandoned" && existing.status !== "abandoned") {
+    sets.push("abandoned_at = datetime('now')")
   }
 
   params.push(param(req.params.id))
@@ -124,9 +128,13 @@ router.patch("/:id", requireAuth, (req, res) => {
   if (becameAchieved) {
     getDb()
       .prepare(
-        `UPDATE users SET achieved_goals = achieved_goals + 1, trust_score = MIN(100, trust_score + 5) WHERE id = ?`
+        "UPDATE users SET achieved_goals = achieved_goals + 1, updated_at = datetime('now') WHERE id = ?"
       )
       .run(existing.owner_user_id)
+    adjustTrustScore(existing.owner_user_id, 5, "goal_achieved", {
+      type: "goal",
+      id: existing.id,
+    })
     notifyGoalAchieved(existing.owner_user_id, existing.title, existing.id)
     notifyConfirmedWitnesses(existing.id, existing.title)
   }
@@ -134,9 +142,13 @@ router.patch("/:id", requireAuth, (req, res) => {
   if (input.status === "abandoned" && existing.status !== "abandoned") {
     getDb()
       .prepare(
-        `UPDATE users SET abandoned_goals = abandoned_goals + 1, trust_score = MAX(0, trust_score - 5) WHERE id = ?`
+        "UPDATE users SET abandoned_goals = abandoned_goals + 1, updated_at = datetime('now') WHERE id = ?"
       )
       .run(existing.owner_user_id)
+    adjustTrustScore(existing.owner_user_id, -5, "goal_abandoned", {
+      type: "goal",
+      id: existing.id,
+    })
   }
 
   const updated = getCommitmentForOwner(param(req.params.id), req.user!.userId)!
@@ -159,7 +171,10 @@ router.post("/:id/claim-reward", requireAuth, (req, res) => {
   }
 
   getDb().prepare(
-    `UPDATE self_commitments SET reward_claimed = 1, status = 'reward_claimed' WHERE id = ?`
+    `UPDATE self_commitments
+     SET reward_claimed = 1, status = 'reward_claimed',
+         reward_claimed_at = datetime('now'), updated_at = datetime('now')
+     WHERE id = ?`
   ).run(param(req.params.id))
 
   createNotification(
@@ -280,9 +295,11 @@ router.delete("/:id", requireAuth, (req, res) => {
     return
   }
   getDb().prepare("DELETE FROM self_commitments WHERE id = ?").run(param(req.params.id))
-  getDb().prepare("UPDATE users SET total_goals = MAX(0, total_goals - 1) WHERE id = ?").run(
-    existing.owner_user_id
-  )
+  getDb()
+    .prepare(
+      "UPDATE users SET total_goals = MAX(0, total_goals - 1), updated_at = datetime('now') WHERE id = ?"
+    )
+    .run(existing.owner_user_id)
   res.status(204).send()
 })
 

@@ -1,7 +1,7 @@
 import type { DatabaseSync } from "node:sqlite"
 
 /** 逻辑 schema 版本；每次增量迁移后递增 */
-export const SCHEMA_VERSION = 2
+export const SCHEMA_VERSION = 3
 
 const META_KEY = "schema_version"
 
