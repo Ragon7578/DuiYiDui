@@ -63,6 +63,7 @@ contract-spirit/
 | [database.md](database.md) | **数据库运维** — 备份、迁移、健康检查 |
 | [versions/README.md](versions/README.md) | **初版 / 终极版** — 范围拆分 |
 | [roadmap/feedback/](roadmap/feedback/) | **反馈窗运营** — [推广计划](roadmap/feedback/promotion-plan.md)、digest、给总负责人的任务简报 |
+| [roadmap/launch-2026-08-05.md](roadmap/launch-2026-08-05.md) | **上线倒计时（2026-08-05）** — 公网邀请制开放 |
 | [roadmap/agents/](roadmap/agents/) | **Agent 任务板 + [STATUS](roadmap/agents/STATUS.md)** — 总负责人分派与监督 |
 | [roadmap/README.md](roadmap/README.md) | 路线总入口 · 快速轨 / 完整初版轨 |
 | [product-roles.md](product-roles.md) | **角色 IA** — 我的 / 他人、解锁门禁、成长条规划 |

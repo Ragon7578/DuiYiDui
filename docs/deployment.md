@@ -17,6 +17,8 @@ cp .env.example .env
 # 建议同时填 SUPPORT_EMAIL、FEEDBACK_ADMIN_KEY；公网保持 EXPOSE_RESET_URL=false
 
 docker compose up -d --build
+# 若无 compose 插件：docker-compose up -d --build
+# 或一键：npm run deploy:staging（自动选择 compose / docker-compose）
 ```
 
 - Web: http://localhost:3000  
@@ -24,7 +26,9 @@ docker compose up -d --build
 - 数据卷: `cs_data` → 容器内 `/data/contract-spirit.db`  
 - Compose 已带 `healthcheck`；`web` 在 `api` healthy 后再起  
 
-公网推荐：先 `docker compose up`，再在前面挂 HTTPS 反代。示例配置见 **[deploy/Caddyfile](../deploy/Caddyfile)**（把 `app.example.com` / `api.example.com` 换成你的域名，并改 `.env` 中的 `APP_URL` / `FRONTEND_ORIGIN` / `NEXT_PUBLIC_API_URL`）。
+公网推荐：先 Compose 起服务，再在前面挂 HTTPS 反代。示例配置见 **[deploy/Caddyfile](../deploy/Caddyfile)**（把 `app.example.com` / `api.example.com` 换成你的域名，并改 `.env` 中的 `APP_URL` / `FRONTEND_ORIGIN` / `NEXT_PUBLIC_API_URL`）。
+
+**上线日历（2026-08-05）：** [roadmap/launch-2026-08-05.md](./roadmap/launch-2026-08-05.md)。
 
 ### 域名 / DNS / HTTPS 清单（F0）
 

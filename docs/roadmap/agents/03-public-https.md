@@ -5,6 +5,7 @@
 | **分支** | `cursor/public-https-c614` |
 | **依赖** | [02-staging-compose.md](./02-staging-compose.md) |
 | **预估** | 中（**需域名与云账号**） |
+| **上线日** | **2026-08-05** — [launch-2026-08-05.md](../launch-2026-08-05.md) §8/3～8/4 |
 
 ## 目标
 
