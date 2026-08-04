@@ -56,6 +56,13 @@ function hasColumn(table: string, column: string): boolean {
   return cols.some((c) => c.name === column)
 }
 
+/** SQLite ALTER 不能用非常量 DEFAULT(datetime('now'))；先可空列再回填。 */
+function addTimestampColumn(table: string, column: string): void {
+  if (!tableExists(table) || hasColumn(table, column)) return
+  db!.exec(`ALTER TABLE ${table} ADD COLUMN ${column} TEXT`)
+  db!.exec(`UPDATE ${table} SET ${column} = datetime('now') WHERE ${column} IS NULL`)
+}
+
 function initSchema() {
   db!.exec(`
     CREATE TABLE IF NOT EXISTS users (
@@ -224,12 +231,8 @@ function migrateSchema() {
   if (!hasColumn("users", "password_reset_expires")) {
     db!.exec("ALTER TABLE users ADD COLUMN password_reset_expires TEXT")
   }
-  if (!hasColumn("users", "created_at")) {
-    db!.exec("ALTER TABLE users ADD COLUMN created_at TEXT NOT NULL DEFAULT (datetime('now'))")
-  }
-  if (!hasColumn("users", "updated_at")) {
-    db!.exec("ALTER TABLE users ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime('now'))")
-  }
+  addTimestampColumn("users", "created_at")
+  addTimestampColumn("users", "updated_at")
   if (!hasColumn("users", "supervise_unlocked_at")) {
     db!.exec("ALTER TABLE users ADD COLUMN supervise_unlocked_at TEXT")
     const required = Number(process.env.SUPERVISE_UNLOCK_REQUIRED || "3")
@@ -242,11 +245,7 @@ function migrateSchema() {
 
   // —— self_commitments（v3 审计列）——
   if (tableExists("self_commitments")) {
-    if (!hasColumn("self_commitments", "updated_at")) {
-      db!.exec(
-        "ALTER TABLE self_commitments ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime('now'))"
-      )
-    }
+    addTimestampColumn("self_commitments", "updated_at")
     if (!hasColumn("self_commitments", "reward_claimed_at")) {
       db!.exec("ALTER TABLE self_commitments ADD COLUMN reward_claimed_at TEXT")
     }
@@ -256,19 +255,13 @@ function migrateSchema() {
   }
 
   // —— supervise_clauses ——
-  if (tableExists("supervise_clauses") && !hasColumn("supervise_clauses", "updated_at")) {
-    db!.exec(
-      "ALTER TABLE supervise_clauses ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime('now'))"
-    )
-  }
+  addTimestampColumn("supervise_clauses", "updated_at")
 
   // —— pledges ——
   if (!hasColumn("pledges", "user_id")) {
     db!.exec("ALTER TABLE pledges ADD COLUMN user_id TEXT")
   }
-  if (!hasColumn("pledges", "updated_at")) {
-    db!.exec("ALTER TABLE pledges ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime('now'))")
-  }
+  addTimestampColumn("pledges", "updated_at")
 
   // —— feedback ——
   if (!hasColumn("feedback", "status")) {
@@ -295,9 +288,7 @@ function migrateSchema() {
 
   // 旧库仍可能残留 goals/contracts：补审计列后再迁入 Self/Supervise
   if (tableExists("goals")) {
-    if (!hasColumn("goals", "updated_at")) {
-      db!.exec("ALTER TABLE goals ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime('now'))")
-    }
+    addTimestampColumn("goals", "updated_at")
     if (!hasColumn("goals", "reward_claimed_at")) {
       db!.exec("ALTER TABLE goals ADD COLUMN reward_claimed_at TEXT")
     }
@@ -311,9 +302,7 @@ function migrateSchema() {
   if (tableExists("parties") && !hasColumn("parties", "user_id")) {
     db!.exec("ALTER TABLE parties ADD COLUMN user_id TEXT")
   }
-  if (tableExists("clauses") && !hasColumn("clauses", "updated_at")) {
-    db!.exec("ALTER TABLE clauses ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime('now'))")
-  }
+  addTimestampColumn("clauses", "updated_at")
 
   if (tableExists("contracts")) {
     db!.exec(`

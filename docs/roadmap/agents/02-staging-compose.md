@@ -19,7 +19,7 @@
 - [ ] 更新 [Sprint 02](../iterations/sprint-02.md) 本机/Staging 可勾项
 - [ ] 周报 `progress/` 一条记录
 
-> **2026-08-02：** 上线日锁定 8/5；本机仅 CLI、daemon 未起 → **优先云主机 Docker**。见 [launch-2026-08-05.md](../launch-2026-08-05.md)。
+> **2026-08-04：** 本地 **npm 生产模式** 预部署已过 `smoke`（Web :3000 / API :4000）。Docker Compose 仍待 daemon（Colima/Desktop）。见 [launch-2026-08-05.md](../launch-2026-08-05.md)。
 
 ## Should
 
